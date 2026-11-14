@@ -1,0 +1,329 @@
+<title>オントロジー構築入門</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+/* Layout: 1本の読み物カラム（最大 720px）。図・表だけ幅を広げ、末尾に文献カタログ（検索つき）を置く。 */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --sunk:#e6ebe9; --ink:#17201d; --muted:#5a6863; --line:#cbd4d0; --line-strong:#8d9a95;
+  --accent:#0f6b5c; --accent-soft:#d5ebe6; --mark:#b4560c;
+  --c-A:#7a4b9c; --c-B:#1f5fae; --c-C:#0f6b5c; --c-D:#3d6a1c; --c-E:#8a5a00; --c-F:#b0372b; --c-G:#a03a78; --c-H:#2f6e8c; --c-I:#5b4f2a;
+  --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-body:"IBM Plex Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111715; --surface:#19211e; --sunk:#0c110f; --ink:#e3ebe8; --muted:#9aa9a4; --line:#2b3633; --line-strong:#5d6c67;
+  --accent:#5fd0b8; --accent-soft:#16312b; --mark:#f0a560;
+  --c-A:#c49be6; --c-B:#86b4f5; --c-C:#5fd0b8; --c-D:#9bd06a; --c-E:#e8b85a; --c-F:#f08f82; --c-G:#ec8cc6; --c-H:#79c3e3; --c-I:#cdbb86; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#19211e; --sunk:#0c110f; --ink:#e3ebe8; --muted:#9aa9a4; --line:#2b3633; --line-strong:#5d6c67;
+  --accent:#5fd0b8; --accent-soft:#16312b; --mark:#f0a560;
+  --c-A:#c49be6; --c-B:#86b4f5; --c-C:#5fd0b8; --c-D:#9bd06a; --c-E:#e8b85a; --c-F:#f08f82; --c-G:#ec8cc6; --c-H:#79c3e3; --c-I:#cdbb86; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.85;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.col{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.wide{max-width:980px;margin:0 auto}
+section{display:flex;flex-direction:column;gap:16px;padding-top:40px}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(30px,6vw,44px);line-height:1.3;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.45;margin:0;text-wrap:balance}
+h3{font-size:17px;margin:0;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.answer{font-size:19px;line-height:1.8;padding:20px 24px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent)}
+.answer b{color:var(--accent)}
+.meta{font-size:13px;color:var(--muted)}
+a{color:var(--accent);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ref{font-family:var(--f-mono);font-size:12px;color:var(--mark);text-decoration:none;white-space:nowrap;vertical-align:1px}
+.ref:hover{text-decoration:underline}
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.def{background:var(--surface);border:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.def q{font-family:var(--f-display);font-weight:700;font-size:16px;quotes:"「" "」"}
+.def small{color:var(--muted);font-size:12px}
+.tscroll{overflow-x:auto;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-weight:700;font-size:13px;color:var(--muted);background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td.k{font-family:var(--f-mono);font-size:13px;white-space:nowrap}
+td.new{color:var(--accent);font-weight:700}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:13px;color:var(--muted)}
+.fig{border:1px solid var(--line);background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:620px;width:100%;height:auto}
+.s-box{fill:var(--surface);stroke:var(--line-strong);stroke-width:1.2}
+.s-head{fill:var(--sunk)}
+.s-t{font-family:var(--f-mono);font-size:11px;fill:var(--ink)}
+.s-tm{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.s-key{font-family:var(--f-mono);font-size:11px;fill:var(--mark);font-weight:500}
+.s-obj{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.s-on{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.s-ln{stroke:var(--accent);stroke-width:1.8;fill:none}
+.s-lh{fill:var(--accent)}
+.s-ll{font-family:var(--f-body);font-size:12px;fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:4px}
+.s-arrow{stroke:var(--line-strong);stroke-width:1.5;fill:none;stroke-dasharray:4 4}
+.s-act{fill:var(--ink)} .s-actt{fill:var(--bg);font-size:11px;font-weight:700;font-family:var(--f-body)}
+.decide{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.decide li{display:grid;grid-template-columns:8.5em minmax(0,1fr);gap:4px 16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.decide li>b{font-family:var(--f-display);font-size:16px}
+.decide .q{font-size:14px;color:var(--muted)}
+@media (max-width:520px){ .decide li{grid-template-columns:minmax(0,1fr)} }
+ol.flow{margin:0;padding:0;list-style:none;counter-reset:f;display:flex;flex-direction:column;gap:10px}
+ol.flow li{counter-increment:f;display:grid;grid-template-columns:2.2em minmax(0,1fr);gap:12px}
+ol.flow li::before{content:counter(f);font-family:var(--f-mono);font-weight:500;color:var(--accent);border:1.5px solid var(--accent);border-radius:50%;width:1.8em;height:1.8em;display:grid;place-items:center;font-size:13px;margin-top:3px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.note{font-size:14px;color:var(--muted);border-left:2px solid var(--line-strong);padding-left:12px}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl li{display:grid;grid-template-columns:5.5em minmax(0,1fr);gap:16px;padding:10px 0;border-top:1px solid var(--line)}
+.tl .y{font-family:var(--f-mono);font-size:14px;color:var(--accent);font-variant-numeric:tabular-nums}
+.picks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;counter-reset:p}
+.picks li{counter-increment:p;background:var(--surface);border:1px solid var(--line);padding:12px 16px;display:grid;grid-template-columns:2em minmax(0,1fr);gap:4px 10px}
+.picks li::before{content:counter(p);font-family:var(--f-mono);color:var(--muted);grid-row:span 2}
+.picks .t{font-weight:700}
+.picks .w{font-size:14px;color:var(--muted)}
+
+/* catalog */
+.cat-head{display:flex;flex-direction:column;gap:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=search],select{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);padding:7px 10px;border-radius:4px;max-width:100%}
+input[type=search]{flex:1;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;padding:3px 10px;border:1.5px solid var(--c,var(--line-strong));color:var(--ink);background:var(--surface);border-radius:99px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--c,var(--ink));color:var(--surface);border-color:var(--c,var(--ink))}
+.chip .n{font-family:var(--f-mono);font-size:11px;opacity:.8;margin-left:4px}
+.catdesc{font-size:14px;color:var(--muted);min-height:1.6em}
+.count{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.refs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.refs li{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.refs li:target{background:var(--accent-soft);outline:2px solid var(--accent)}
+.refs .id{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right}
+.refs .ti{font-size:15px;line-height:1.55;min-width:0;overflow-wrap:anywhere}
+.refs .ti a{color:var(--ink);text-decoration:none}
+.refs .ti a:hover{text-decoration:underline;color:var(--accent)}
+.refs .by{grid-column:2;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.refs .cb{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.refs .cb b{color:var(--ink);font-weight:500}
+.tagc{display:inline-block;font-size:11px;font-weight:700;color:var(--c);border:1px solid var(--c);border-radius:3px;padding:0 5px;margin-right:6px;vertical-align:2px;line-height:1.5}
+.star{color:var(--mark);font-size:12px;margin-right:4px}
+.more{font:inherit;font-size:14px;padding:8px 16px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:4px;cursor:pointer;align-self:center}
+.method{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+@media (max-width:520px){ .refs li{grid-template-columns:2.6em minmax(0,1fr)} .refs .cb{grid-column:2;text-align:left} }
+</style>
+
+<div class="col">
+  <header style="display:flex;flex-direction:column;gap:14px">
+    <span class="eyebrow">Ontology Engineering ／ 入門</span>
+    <h1>オントロジー構築って、<br>何をしてるの？</h1>
+    <p class="answer">ひと言でいうと、<b>ある組織や分野の「世界」を、人とコンピュータが同じ意味で扱えるように、モノ・性質・関係・ルールとして書き出して取り決める作業</b>。Palantir の場合はそこに「何をしてよいか（操作）」まで加えて、データを業務の現場で直接動かせる形にしている。</p>
+    <p class="meta">文献 500件（実在確認済み）を末尾に収録。本文中の <span class="ref">[35]</span> のような番号は、その一覧の番号。</p>
+  </header>
+
+  <section>
+    <span class="eyebrow">01 定義</span>
+    <h2>「オントロジー」という言葉の3つの顔</h2>
+    <p>もともとは哲学の用語で「存在論」、つまり<em>世界には何が存在し、それらはどう分類できるか</em>を考える分野のこと。1990年代に AI 研究者がこの言葉を借りて、「コンピュータに渡す、分野の言葉の取り決め書」という意味で使い始めた。今よく引用される定義はこの3つ。</p>
+    <div class="defs">
+      <div class="def"><q>概念化の明示的な仕様</q><small>Gruber 1993 <a class="ref" href="#r35">[35]</a></small><span style="font-size:14px">頭の中にある「この分野はこういうモノでできている」という理解を、書き出したもの。</span></div>
+      <div class="def"><q>共有された概念化の、形式的で明示的な仕様</q><small>Studer ら 1998 <a class="ref" href="#r37">[37]</a></small><span style="font-size:14px">「共有」＝関係者みんなが合意している。「形式的」＝機械が読める。この2語が加わった。</span></div>
+      <div class="def"><q>世界の分類。組織のデジタルツイン</q><small>Palantir Foundry 公式 <a class="ref" href="#r438">[438]</a></small><span style="font-size:14px">組織のデータとモデルを、現実のモノに対応づけて1つにまとめた層。</span></div>
+    </div>
+    <p>3つに共通するのは、<b>「暗黙の了解」を「明文化された取り決め」に変える</b>こと。ある部署が「顧客」と呼ぶものと、別の部署が「取引先」と呼ぶものが同じなのか違うのか。それを人の頭の中ではなく、仕組みとして決めておく。</p>
+  </section>
+
+  <section>
+    <span class="eyebrow">02 具体例</span>
+    <h2>表のままだと、何が困るのか</h2>
+    <p>航空会社にこんな表があるとする。データとしては全部そろっている。</p>
+  </section>
+  </div>
+  <figure class="wide" style="padding-top:16px">
+    <div class="fig">
+      <svg viewBox="0 0 900 330" role="img" aria-label="3つの表がオントロジーのオブジェクトとリンクに変換される図">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="s-lh" d="M0 0L10 5L0 10z"/></marker><marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path style="fill:var(--line-strong)" d="M0 0L10 5L0 10z"/></marker></defs>
+        <text class="s-tm" x="20" y="24">変換前：システムごとの表</text>
+        <g><rect class="s-box" x="20" y="36" width="330" height="76"/><rect class="s-head" x="20.6" y="36.6" width="328.8" height="20"/>
+          <text class="s-tm" x="30" y="51">flt_sched</text>
+          <text class="s-key" x="30" y="74">flt_id</text><text class="s-t" x="92" y="74">flt_no</text><text class="s-t" x="148" y="74">tail_no</text><text class="s-t" x="212" y="74">dep_apt</text><text class="s-t" x="276" y="74">pax</text>
+          <text class="s-t" x="30" y="96">F1001</text><text class="s-t" x="92" y="96">TB101</text><text class="s-t" x="148" y="96">JA812T</text><text class="s-t" x="212" y="96">HND</text><text class="s-t" x="276" y="96">172</text></g>
+        <g><rect class="s-box" x="20" y="128" width="330" height="76"/><rect class="s-head" x="20.6" y="128.6" width="328.8" height="20"/>
+          <text class="s-tm" x="30" y="143">ac_master</text>
+          <text class="s-key" x="30" y="166">tail_no</text><text class="s-t" x="100" y="166">model</text><text class="s-t" x="176" y="166">seats</text><text class="s-t" x="232" y="166">status</text>
+          <text class="s-t" x="30" y="188">JA812T</text><text class="s-t" x="100" y="188">A320neo</text><text class="s-t" x="176" y="188">180</text><text class="s-t" x="232" y="188">運航可能</text></g>
+        <g><rect class="s-box" x="20" y="220" width="330" height="76"/><rect class="s-head" x="20.6" y="220.6" width="328.8" height="20"/>
+          <text class="s-tm" x="30" y="235">apt_ref</text>
+          <text class="s-key" x="30" y="258">iata</text><text class="s-t" x="100" y="258">name</text>
+          <text class="s-t" x="30" y="280">HND</text><text class="s-t" x="100" y="280">羽田空港</text></g>
+        <path class="s-arrow" d="M370 166 L470 166" marker-end="url(#ahg)"/><text class="s-tm" x="380" y="156">取り決める</text>
+        <text class="s-tm" x="500" y="24">変換後：オントロジー</text>
+        <rect class="s-obj" x="520" y="50" width="140" height="56" rx="4"/><text class="s-on" x="590" y="76" text-anchor="middle">フライト</text><text class="s-tm" x="590" y="94" text-anchor="middle">TB101 羽田→新千歳</text>
+        <rect class="s-obj" x="740" y="50" width="140" height="56" rx="4"/><text class="s-on" x="810" y="76" text-anchor="middle">航空機</text><text class="s-tm" x="810" y="94" text-anchor="middle">JA812T</text>
+        <rect class="s-obj" x="520" y="236" width="140" height="56" rx="4"/><text class="s-on" x="590" y="262" text-anchor="middle">空港</text><text class="s-tm" x="590" y="280" text-anchor="middle">羽田空港</text>
+        <path class="s-ln" d="M660 78 L736 78" marker-end="url(#ah)"/><text class="s-ll" x="698" y="70" text-anchor="middle">使用機材</text>
+        <path class="s-ln" d="M590 106 L590 232" marker-end="url(#ah)"/><text class="s-ll" x="598" y="174">出発地</text>
+        <path class="s-ln" d="M810 106 Q810 230 664 258" marker-end="url(#ah)"/><text class="s-ll" x="760" y="200">拠点</text>
+        <rect class="s-act" x="740" y="120" width="140" height="22" rx="11"/><text class="s-actt" x="810" y="135" text-anchor="middle">操作：整備入りにする</text>
+      </svg>
+    </div>
+    <figcaption>左の3枚はそれぞれ別システムの表。列名は略語で、表どうしのつながりは「同じ値が入っている列がある」という暗黙の了解でしかない。右では「フライト」「航空機」という名前のモノになり、関係にも名前がつき、許された操作までくっついている。</figcaption>
+  </figure>
+  <div class="col">
+  <section style="padding-top:24px">
+    <p>左のままだと、「JA812T が止まったら何便に影響するか」を知るには、どの表のどの列をどうつなげばいいかを知っている人が、毎回それを書く必要がある。右の形にしておけば、誰でも（AIエージェントでも）<b>航空機 → 担当フライト</b>とたどるだけで済む。</p>
+    <p>Palantir の公式ドキュメント <a class="ref" href="#r438">[438]</a> には、まさにこの対応表が載っている。</p>
+    <div class="tscroll"><table>
+      <tr><th>表（データセット）の世界</th><th>オントロジーの世界</th><th>例</th></tr>
+      <tr><td>データセット</td><td>オブジェクト型</td><td>「航空機」という種類</td></tr>
+      <tr><td>行</td><td>オブジェクト</td><td>JA812T という1機</td></tr>
+      <tr><td>列</td><td>プロパティ</td><td>座席数、状態</td></tr>
+      <tr><td>セルの値</td><td>プロパティ値</td><td>180、運航可能</td></tr>
+      <tr><td>JOIN（結合）</td><td>リンク型</td><td>フライト → 使用機材</td></tr>
+      <tr><td class="new">（対応するものがない）</td><td class="new">アクション型</td><td>整備入りにする、機材を変更する</td></tr>
+    </table></div>
+    <p class="note">最後の行がポイント。表の世界には「この列をこう書き換えてよいのは誰で、どんな条件のときか」を表す部品がない。Palantir はこれを<b>キネティック（動き）の要素</b>と呼び、オブジェクト・プロパティ・リンクの<b>セマンティック（意味）の要素</b>と区別している <a class="ref" href="#r437">[437]</a> <a class="ref" href="#r442">[442]</a>。</p>
+  </section>
+
+  <section>
+    <span class="eyebrow">03 中身</span>
+    <h2>構築で、実際に「決めている」こと</h2>
+    <p>オントロジー構築の作業時間のほとんどは、ツールを操作することではなく、<b>関係者と話し合って次のことを決める</b>のに使われる。</p>
+    <ul class="decide">
+      <li><b>範囲と目的</b><div>何のために作るのか。どんな質問に答えられればよいのか。<div class="q">例：「止まった機体の影響便と乗客数がすぐ分かること」。この「答えたい質問」を<em>コンピテンシー・クエスチョン</em>と呼び、範囲決めと完成度チェックの両方に使う <a class="ref" href="#r123">[123]</a> <a class="ref" href="#r130">[130]</a>。</div></div></li>
+      <li><b>モノの種類</b><div>世界をどんな種類のモノに切り分けるか。<div class="q">「便名 TB101」はモノなのか、それとも「4月1日の TB101」がモノなのか。切り方を間違えると、後で答えられない質問が出てくる。</div></div></li>
+      <li><b>同一性</b><div>何をもって「同じ1つ」とみなすか。<div class="q">機体番号が同じなら同じ機体。便名は毎日同じ番号で飛ぶので、それだけでは1つに決まらない。この判断を体系化したのが OntoClean <a class="ref" href="#r71">[71]</a>。</div></div></li>
+      <li><b>呼び名</b><div>部署ごとにバラバラな言葉を、どれに統一するか。<div class="q">tail_no、機番、レジ番号。同じものを指しているなら1つの名前にし、別名として残す。</div></div></li>
+      <li><b>分類の階層</b><div>「A は B の一種」という上下関係。<div class="q">旅客機も貨物機も「航空機」の一種、など。上位の分類を共通の枠組み（上位オントロジー）から借りることもある <a class="ref" href="#r187">[187]</a> <a class="ref" href="#r191">[191]</a>。</div></div></li>
+      <li><b>関係</b><div>モノとモノがどうつながるか。向きと数も決める。<div class="q">1機の航空機は1日に何便も担当する（1対多）。</div></div></li>
+      <li><b>ルール（制約）</b><div>必ず成り立っていなければならないこと。<div class="q">「フライトには必ず機材が1つ割り当たっている」「座席数は乗客数以上」。</div></div></li>
+      <li><b>操作と権限</b><div>誰が、どんな条件で、何を書き換えてよいか。<div class="q">Palantir 型で特に重視される部分 <a class="ref" href="#r442">[442]</a>。研究系のオントロジーではふつう扱わない。</div></div></li>
+    </ul>
+  </section>
+
+  <section>
+    <span class="eyebrow">04 進め方</span>
+    <h2>作業の流れ</h2>
+    <p>研究の世界で一番よく読まれている入門ガイド <a class="ref" href="#r73">[73]</a> の手順を、上の例に当てはめるとこうなる。</p>
+    <ol class="flow">
+      <li><div><b>範囲を決める</b>　答えたい質問を書き出す。</div></li>
+      <li><div><b>既存のものを探す</b>　空港コードや機種の分類など、すでに標準があれば再利用する。</div></li>
+      <li><div><b>重要な用語を全部挙げる</b>　機体、便、空港、整備、遅延、乗客…と、まず洗いざらい出す。</div></li>
+      <li><div><b>クラスと階層を決める</b>　用語のうちどれが「モノの種類」かを決め、上下関係を作る。</div></li>
+      <li><div><b>プロパティ（性質と関係）を決める</b>　各モノが持つ値と、他のモノとのつながり。</div></li>
+      <li><div><b>制約をつける</b>　値の型、必須かどうか、個数の上限下限。</div></li>
+      <li><div><b>実データを入れる</b>　実際の機体や便を入れてみて、質問に答えられるか確かめる。</div></li>
+    </ol>
+    <p>実際は一直線では進まず、7まで行って「この質問に答えられない」と分かり、4に戻る、を何度も繰り返す。大規模な開発向けには、既存資源の再利用や複数チームでの分担まで含めた方法論（NeOn など）がある <a class="ref" href="#r74">[74]</a>。できあがったものの品質チェックには、よくある設計ミスを自動で見つけるツール（OOPS!）もある <a class="ref" href="#r351">[351]</a>。</p>
+    <p>Palantir での作業も骨格は同じで、違うのは出発点。白紙から概念を考えるのではなく、<b>すでにあるデータセットを、オブジェクト型・プロパティ・リンク型に対応づける</b>ところから始める <a class="ref" href="#r437">[437]</a> <a class="ref" href="#r440">[440]</a>。そのうえで、アクション型（操作）と関数（業務ロジック）を足していく。</p>
+  </section>
+
+  <section>
+    <span class="eyebrow">05 2つの系統</span>
+    <h2>研究・Web 系と、Palantir 系</h2>
+    <p>同じ「オントロジー」でも、目的の違う2つの系統がある。どちらが正しいということではなく、何に使うかが違う。</p>
+    <div class="tscroll"><table>
+      <tr><th></th><th>研究・Web 系（OWL など）</th><th>Palantir 系（Foundry Ontology）</th></tr>
+      <tr><td>主な目的</td><td>知識を共有し、機械に推論させる</td><td>組織の意思決定と業務を動かす</td></tr>
+      <tr><td>書き方</td><td>W3C 標準の言語（RDF・OWL） <a class="ref" href="#r144">[144]</a> <a class="ref" href="#r143">[143]</a></td><td>独自の管理画面でオブジェクト型などを定義</td></tr>
+      <tr><td>データとの関係</td><td>概念の定義が先。データは後からひもづける <a class="ref" href="#r348">[348]</a></td><td>既存のデータセットに直接ひもづけて作る</td></tr>
+      <tr><td>得意なこと</td><td>「A は B の一種で、B は C だから A は C」といった自動推論 <a class="ref" href="#r141">[141]</a></td><td>人やAIが画面から状態を書き換え、その記録が残る</td></tr>
+      <tr><td>書き換え操作</td><td>基本的に定義しない</td><td>アクション型として、条件・権限つきで定義 <a class="ref" href="#r442">[442]</a></td></tr>
+      <tr><td>代表例</td><td>Gene Ontology <a class="ref" href="#r229">[229]</a>、OBO Foundry <a class="ref" href="#r227">[227]</a></td><td>製造・防衛・医療などの企業や政府機関の業務システム</td></tr>
+    </table></div>
+    <p class="note">Palantir 自身は、オントロジーを「データではなく、企業の意思決定を表すもの」と位置づけ、意思決定を<b>データ・ロジック・アクション・セキュリティ</b>の4要素で捉えている <a class="ref" href="#r439">[439]</a>。研究系の言葉でいうと、知識表現に「業務の操作」と「アクセス制御」を足したもの、と考えると分かりやすい。</p>
+  </section>
+
+  <section>
+    <span class="eyebrow">06 歴史</span>
+    <h2>どうやって今の形になったか</h2>
+    <ul class="tl">
+      <li><span class="y">古代〜</span><div>哲学の存在論。何が存在し、どう分類できるか。現代の情報科学にも「形式的存在論」として受け継がれている <a class="ref" href="#r1">[1]</a> <a class="ref" href="#r4">[4]</a>。</div></li>
+      <li><span class="y">1993</span><div>Gruber が AI の文脈で定義。異なるシステム間で知識を共有するための「取り決め書」として広まる <a class="ref" href="#r35">[35]</a> <a class="ref" href="#r36">[36]</a>。</div></li>
+      <li><span class="y">1990年代後半</span><div>作り方の方法論が整い始める <a class="ref" href="#r38">[38]</a>。企業の業務用語を整理する Enterprise Ontology も登場 <a class="ref" href="#r435">[435]</a>。</div></li>
+      <li><span class="y">2001</span><div>セマンティック Web 構想。Web 全体を機械が意味を理解できる形にしようという提案 <a class="ref" href="#r138">[138]</a>。</div></li>
+      <li><span class="y">2000年代</span><div>OWL が標準になり <a class="ref" href="#r141">[141]</a>、生命科学で Gene Ontology などが大規模に成功 <a class="ref" href="#r227">[227]</a>。文章からオントロジーを自動で作る研究も始まる <a class="ref" href="#r285">[285]</a>。</div></li>
+      <li><span class="y">2010年代</span><div>ナレッジグラフ（モノと関係の巨大なネットワーク）が検索や企業で普及。オントロジーはその「設計図」の役割に。</div></li>
+      <li><span class="y">2020年代</span><div>デジタルツイン <a class="ref" href="#r434">[434]</a> と、大規模言語モデル（LLM）による構築支援 <a class="ref" href="#r306">[306]</a> <a class="ref" href="#r328">[328]</a>。Palantir は LLM や AI エージェントが業務データを安全に扱うための土台として、オントロジーを前面に出している <a class="ref" href="#r439">[439]</a>。</div></li>
+    </ul>
+  </section>
+
+  <section>
+    <span class="eyebrow">07 読む順</span>
+    <h2>最初に読むなら、この10本</h2>
+    <ol class="picks" id="picks"></ol>
+  </section>
+</div>
+
+<section class="wide" id="library">
+  <div class="cat-head">
+    <span class="eyebrow">08 文献一覧</span>
+    <h2>オントロジー文献 500件</h2>
+    <p class="catdesc" id="catdesc"></p>
+    <div class="controls">
+      <input type="search" id="q" placeholder="タイトル・著者・掲載誌で検索（例：LLM、Guarino、manufacturing）" aria-label="文献を検索">
+      <select id="sort" aria-label="並べ替え"><option value="id">番号順（分野ごと）</option><option value="cites">被引用数が多い順</option><option value="new">新しい順</option><option value="old">古い順</option></select>
+    </div>
+    <div class="chips" id="chips"></div>
+    <span class="count" id="count"></span>
+  </div>
+  <ul class="refs" id="refs"></ul>
+  <div style="display:flex;justify-content:center;padding-top:12px"><button class="more" id="more">さらに表示</button></div>
+  <div class="method" style="padding-top:28px">
+    <b style="color:var(--ink)">この500件の集め方</b>
+    <span>学術文献データベース Crossref から、9分野・57通りの検索語で取得（2026年11月14日）。タイトルに "ontology / ontological" を含むものに絞り、社会科学で「研究の立場」という意味で使われているものなど、今回の話と関係ない用法は除外した。</span>
+    <span>各分野で「被引用数の多いもの」7割、「2021年以降で、年あたりの被引用数が多いもの」3割を選び、足りない分は全体から被引用数順に補った。Gene Ontology の年次報告のように似た論文が続くものは数を絞っている。</span>
+    <span>タイトルに "ontology" を含まない定番の古典（Gruber 1993 など）は、Crossref で実在を照合してから追加した（★印）。Palantir・W3C の公式文書と Noy &amp; McGuinness の入門ガイドは、ページが開けることを確認して追加した。</span>
+    <span>被引用数は Crossref の集計値で、Google Scholar の値より小さく出ることが多い。分野の振り分けはタイトルのキーワードによる自動判定なので、境界にあるものは別の分野にも当てはまりうる。</span>
+  </div>
+</section>
+
+<script>
+const REFS=/*REFS*/[];
+const CAT={A:['哲学の存在論','「存在するものをどう分類するか」という哲学側の議論。情報科学のオントロジーの土台にある考え方。'],
+B:['定義と基礎理論','「オントロジーとは何か」を定めた論文と、知識表現としての基礎。'],
+C:['構築の方法論','どういう手順・設計方針で作るか。デザインパターン、モジュール化、コンピテンシー・クエスチョンなど。'],
+D:['記述言語と推論','OWL・RDF・記述論理など、オントロジーを機械が読める形で書くための言語と、そこから自動で推論する仕組み。'],
+E:['上位オントロジー','「物」「出来事」「性質」など、どの分野にも共通する最上位の分類（BFO・DOLCE・UFO など）。'],
+F:['分野別の応用','生命科学、医療、製造、地理などで実際に作られたオントロジー。'],
+G:['自動構築とLLM','文章やデータからオントロジーを自動で作る研究。最近は大規模言語モデルの活用が中心。'],
+H:['統合・対応付け・評価','別々に作られたオントロジーやデータベースをつなぐ方法と、出来の良し悪しを測る方法。'],
+I:['企業・ナレッジグラフ・デジタルツイン','企業の業務、ナレッジグラフ、デジタルツインでの活用。Palantir の公式文書もここ。']};
+const PICKS=[[35,'オントロジーの定義の出発点。短く、すべての議論がここを参照する。'],[39,'「なぜ必要か」を一般向けに説明した短い論文。'],
+[73,'作り方を7つの手順で説明した入門ガイド。ワインと料理の例で読みやすい。'],[438,'Palantir での考え方。表とオントロジーの対応表がある。'],
+[439,'Palantir がオントロジーを「意思決定の表現」と位置づける理由。'],[71,'「同じ1つ」とは何かを判断する方法。設計の勘どころが分かる。'],
+[75,'よく出てくる設計の型（パターン）の紹介。'],[187,'上位オントロジーの代表格 DOLCE の紹介。'],[306,'LLM の時代にオントロジーがどう役立つかの見通し。'],[436,'製造業でのナレッジグラフ活用の体系的なレビュー。']];
+const byId=Object.fromEntries(REFS.map(r=>[r.id,r]));
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const au=r=>{const a=r.authors||[];return a.length>3?a.slice(0,3).join(', ')+' ほか':a.join(', ')};
+document.getElementById('picks').innerHTML=PICKS.map(([id,w])=>{const r=byId[id];return `<li><span class="t"><a href="#r${id}">${esc(r.title)}</a></span><span class="w">${esc(au(r))}${r.year?'（'+r.year+'）':''} ― ${w}</span></li>`}).join('');
+
+let cat=null,shown=60;
+const st={q:'',sort:'id'};
+function list(){
+  const q=st.q.trim().toLowerCase();
+  let xs=REFS.filter(r=>(!cat||r.cat===cat)&&(!q||(r.title+' '+(r.authors||[]).join(' ')+' '+r.venue+' '+(r.year||'')).toLowerCase().includes(q)));
+  const s=st.sort;
+  if(s==='cites') xs=[...xs].sort((a,b)=>(b.cites??-1)-(a.cites??-1));
+  if(s==='new') xs=[...xs].sort((a,b)=>(b.year??0)-(a.year??0));
+  if(s==='old') xs=[...xs].sort((a,b)=>(a.year??9999)-(b.year??9999));
+  return xs;
+}
+function render(){
+  const xs=list();
+  document.getElementById('chips').innerHTML=`<button class="chip" aria-pressed="${!cat}" data-c="">すべて<span class="n">${REFS.length}</span></button>`+
+    Object.entries(CAT).map(([k,[n]])=>`<button class="chip" style="--c:var(--c-${k})" aria-pressed="${cat===k}" data-c="${k}">${n}<span class="n">${REFS.filter(r=>r.cat===k).length}</span></button>`).join('');
+  document.getElementById('catdesc').textContent=cat?CAT[cat][1]:'9つの分野に分けてある。分野を選ぶと、その分野の説明が出る。';
+  document.getElementById('count').textContent=`${xs.length}件中 ${Math.min(shown,xs.length)}件を表示`;
+  document.getElementById('refs').innerHTML=xs.slice(0,shown).map(r=>`<li id="r${r.id}"><span class="id">${r.id}</span><span class="ti"><span class="tagc" style="--c:var(--c-${r.cat})">${CAT[r.cat][0]}</span>${r.classic?'<span class="star" title="定番として追加">★</span>':''}<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a></span><span class="cb">${r.cites!=null?'被引用 <b>'+r.cites.toLocaleString()+'</b>':'Web文書'}</span><span class="by">${esc(au(r))}${r.year?'（'+r.year+'）':''}${r.venue?' ／ '+esc(r.venue):''}</span></li>`).join('');
+  document.getElementById('more').hidden=shown>=xs.length;
+}
+document.getElementById('chips').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;cat=b.dataset.c||null;shown=60;render();});
+document.getElementById('q').addEventListener('input',e=>{st.q=e.target.value;shown=60;render();});
+document.getElementById('sort').addEventListener('change',e=>{st.sort=e.target.value;render();});
+document.getElementById('more').addEventListener('click',()=>{shown+=100;render();});
+function jump(){const m=location.hash.match(/^#r(\d+)$/);if(!m)return;const id=+m[1];cat=null;st.q='';st.sort='id';document.getElementById('q').value='';document.getElementById('sort').value='id';
+  const idx=REFS.findIndex(r=>r.id===id);if(idx>=shown)shown=idx+20;render();const el=document.getElementById('r'+id);if(el)el.scrollIntoView({block:'center'});}
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#r"]');if(!a)return;e.preventDefault();history.replaceState(null,'',a.getAttribute('href'));jump();});
+window.addEventListener('hashchange',jump);
+render();jump();
+</script>
