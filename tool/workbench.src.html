@@ -1,0 +1,370 @@
+<title>読解オントロジー工房</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+/* Layout: 作品一覧 → 作業台。作業台は左に本文（明朝・スクロール枠・選択バー付き）、右に種類ごとのタブとカード。狭い画面では本文を上に固定して積む。 */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --sunk:#e6ebe9; --ink:#17201d; --muted:#5a6863; --line:#cbd4d0; --line-strong:#8d9a95;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#d5ebe6; --hl:#ffe08a; --hl-ink:#17201d; --bad:#b3261e; --warn:#8a5a00;
+  --c-E:#1f5fae; --c-M:#b0372b; --c-D:#7a4b9c; --c-Q:#8a5a00; --c-P:#0f6b5c;
+  --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-body:"IBM Plex Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-text:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111715; --surface:#19211e; --sunk:#0c110f; --ink:#e3ebe8; --muted:#9aa9a4; --line:#2b3633; --line-strong:#5d6c67;
+  --accent:#5fd0b8; --accent-ink:#08201b; --accent-soft:#16312b; --hl:#7a5c00; --hl-ink:#fff6d6; --bad:#ff8a80; --warn:#e8b85a;
+  --c-E:#86b4f5; --c-M:#f08f82; --c-D:#c49be6; --c-Q:#e8b85a; --c-P:#5fd0b8; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#19211e; --sunk:#0c110f; --ink:#e3ebe8; --muted:#9aa9a4; --line:#2b3633; --line-strong:#5d6c67;
+  --accent:#5fd0b8; --accent-ink:#08201b; --accent-soft:#16312b; --hl:#7a5c00; --hl-ink:#fff6d6; --bad:#ff8a80; --warn:#e8b85a;
+  --c-E:#86b4f5; --c-M:#f08f82; --c-D:#c49be6; --c-Q:#e8b85a; --c-P:#5fd0b8; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.75;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.narrow{max-width:760px}
+header.top{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+h1{font-family:var(--f-display);font-weight:900;font-size:24px;margin:0}
+h2{font-family:var(--f-display);font-weight:700;font-size:19px;margin:0;text-wrap:balance}
+h3{font-size:15px;margin:0}
+p{margin:0}
+.muted{color:var(--muted);font-size:13px}
+.grow{flex:1}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=text],input[type=number],select,textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:4px;padding:6px 9px;max-width:100%;min-width:0}
+textarea{width:100%;resize:vertical;line-height:1.7}
+.btn{font-size:14px;padding:6px 14px;border:1px solid var(--line-strong);background:var(--surface);border-radius:4px}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.btn.sm{font-size:12px;padding:2px 9px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.panel{background:var(--surface);border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.dash{background:none;border-style:dashed}
+.msg{font-size:14px;padding:7px 12px;border-left:3px solid var(--bad);background:var(--sunk)}
+.msg.ok{border-color:var(--accent)}
+.works{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:12px}
+.work{background:var(--surface);border:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.work b{font-family:var(--f-text);font-size:18px}
+.counts{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;font-family:var(--f-mono);color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field>label,.flab{font-size:12px;font-weight:700;color:var(--muted)}
+.steps{margin:0;padding-left:1.3em;font-size:14px;display:flex;flex-direction:column;gap:2px}
+
+.bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}
+.text{position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;max-height:calc(100vh - 20px)}
+.text-head{padding:8px 14px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+.text-head b{font-family:var(--f-text);font-size:17px}
+.selbar{padding:8px 14px;background:var(--sunk);border-bottom:1px solid var(--line);font-size:13px;display:flex;flex-direction:column;gap:6px;min-height:2.6em}
+.selbar.has{background:var(--accent-soft)}
+.text-head,.selbar{flex:none}
+.selq{font-family:var(--f-text);font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.paras{overflow-y:auto;padding:10px 14px 24px;font-family:var(--f-text);font-size:16px;line-height:2;display:flex;flex-direction:column;gap:4px}
+.para{display:grid;grid-template-columns:2.2em minmax(0,1fr);gap:8px}
+.para .no{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right;padding:6px 2px 0 0;background:none;border:0;align-self:start;line-height:1.6}
+.para .no:hover{color:var(--accent);text-decoration:underline}
+.scene-lab{grid-column:1/-1;display:flex;gap:6px;align-items:center;border-top:1px dashed var(--line-strong);margin-top:8px;padding-top:6px;font-family:var(--f-body);font-size:12px;color:var(--muted)}
+.scene-lab input{font-size:12px;padding:1px 6px;font-weight:700;flex:1}
+.tags{display:inline-flex;gap:3px;margin-left:6px;vertical-align:2px;user-select:none;-webkit-user-select:none}
+mark{background:var(--hl);color:var(--hl-ink);padding:2px 0;border-radius:2px}
+.tg{font-family:var(--f-mono);font-size:10px;line-height:1.5;padding:0 4px;border:1px solid var(--c);color:var(--c);background:none;border-radius:3px}
+@media (max-width:860px){ .bench{grid-template-columns:minmax(0,1fr)} .text{max-height:48vh;top:env(safe-area-inset-top,0px);z-index:5} }
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{font-size:13px;padding:4px 12px;border:1.5px solid var(--c,var(--line-strong));background:var(--surface);border-radius:99px}
+.tab[aria-selected="true"]{background:var(--c,var(--ink));color:var(--surface);border-color:var(--c,var(--ink));font-weight:700}
+.tab .n{font-family:var(--f-mono);font-size:11px;margin-left:4px;opacity:.85}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card.on{outline:2px solid var(--c)}
+.card.form{background:var(--surface);border:2px solid var(--c)}
+.card-h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.card-h b{font-size:16px;overflow-wrap:anywhere}
+.id{font-family:var(--f-mono);font-size:11px;color:var(--c);border:1px solid var(--c);border-radius:3px;padding:0 5px;line-height:1.6}
+.pill{font-size:11px;font-weight:700;border-radius:99px;padding:0 8px;border:1px solid var(--line-strong);color:var(--muted);line-height:1.7}
+.chain{display:grid;grid-template-columns:4.6em minmax(0,1fr);gap:4px 10px;font-size:14px;margin:0}
+.chain dt{color:var(--muted);font-size:12px;padding-top:2px}
+.chain dd{margin:0;overflow-wrap:anywhere}
+.none{color:var(--bad);font-size:13px}
+.q{font-family:var(--f-text);font-size:14px;text-align:left;background:var(--sunk);border:0;border-left:2px solid var(--line-strong);padding:4px 10px;width:100%;line-height:1.7;display:flex;gap:6px;align-items:baseline}
+.q .pn{font-family:var(--f-mono);font-size:11px;color:var(--muted);flex:none}
+.q span.t{flex:1;min-width:0;overflow-wrap:anywhere}
+.qx{display:flex;gap:4px;align-items:stretch}
+.interp::before{content:"解釈";font-size:11px;font-weight:700;color:var(--c-D);border:1px solid var(--c-D);border-radius:3px;padding:0 5px;margin-right:6px;vertical-align:1px}
+.lk{font-size:13px;padding:1px 8px;border:1px solid var(--c);background:none;border-radius:4px;text-align:left;overflow-wrap:anywhere}
+.lk .i{font-family:var(--f-mono);font-size:11px;color:var(--c);margin-right:4px}
+.ans{font-size:15px;padding:8px 12px;background:var(--accent-soft);border:1px solid var(--accent);white-space:pre-wrap;overflow-wrap:anywhere}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px}
+.checks{display:flex;flex-direction:column;gap:4px;max-height:11em;overflow:auto;border:1px solid var(--line);padding:6px 10px}
+.checks label{font-size:14px;display:flex;gap:6px;align-items:baseline}
+.iss{display:grid;grid-template-columns:4.4em minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px;align-items:baseline}
+.lv{font-size:11px;font-weight:700;border:1px solid currentColor;border-radius:3px;text-align:center;line-height:1.7}
+.lv.a{color:var(--bad)} .lv.b{color:var(--warn)} .lv.c{color:var(--muted)}
+.stat{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--f-mono);font-size:13px}
+.stat b{font-size:20px;font-family:var(--f-display)}
+.empty{font-size:14px;color:var(--muted);border:1px dashed var(--line-strong);padding:14px}
+.cnt{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.cnt.over{color:var(--bad);font-weight:700}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const SAMPLE=/*SAMPLE*/null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KIND={E:{n:'出来事',k:'events',c:'--c-E'},M:{n:'心情',k:'feelings',c:'--c-M'},D:{n:'仕掛け',k:'devices',c:'--c-D'},Q:{n:'設問',k:'questions',c:'--c-Q'},P:{n:'人物',k:'people',c:'--c-P'}};
+const DTYPES=['象徴（くり返される物）','比喩','情景描写','語りの仕掛け','対比','構成（くり返し・伏線）','結末','その他'];
+const QTYPES=['心情説明','変化の理由','行動の理由','表現の効果','対比','内容説明','その他'];
+const cv=id=>`style="--c:var(${KIND[id[0]].c})"`;
+
+/* ---------- 保存 ---------- */
+const store={mode:'wait',col:null,
+  async init(){
+    try{ if(window.claude?.use){ const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]); const id=user?await user.id():null;
+      if(db&&id){ this.col=db.collection('data/users/'+id); const snap=await this.col.get(); this.mode='cloud'; return snap.docs.map(d=>d.data()).filter(w=>w&&w.id&&Array.isArray(w.text)); } } }catch(e){}
+    this.mode='local'; try{return JSON.parse(localStorage.getItem('reading-works')||'[]')}catch(e){return []}
+  },
+  async save(w){ if(this.mode==='cloud') await this.col.doc(w.id).set(w); else this.saveLocal(); },
+  async remove(id){ if(this.mode==='cloud') await this.col.doc(id).delete(); else this.saveLocal(); },
+  saveLocal(){ try{localStorage.setItem('reading-works',JSON.stringify(works))}catch(e){ throw {message:'この端末に保存できなかった'} } }
+};
+let works=[],W=null,saveState='',timer=null,saving=false,dirtyW=null;
+function touch(w){ w=w||W; if(dirtyW&&dirtyW!==w) flush(); w.updated=Date.now(); dirtyW=w; saveState='保存中…'; clearTimeout(timer); timer=setTimeout(flush,700); paintSave(); }
+async function flush(){ if(saving||!dirtyW) return; saving=true; const w=JSON.parse(JSON.stringify(dirtyW)); dirtyW=null;
+  try{ await store.save(w); saveState=store.mode==='cloud'?'保存済み':'この端末に保存済み'; }catch(e){ saveState='保存に失敗：'+(e.message||e.code||''); }
+  saving=false; paintSave(); if(dirtyW) flush(); }
+function paintSave(){ const el=$('save'); if(el) el.textContent=saveState; }
+
+/* ---------- 状態 ---------- */
+const ui={view:'home',tab:'M',sel:null,edit:null,pending:null,msg:null,confirm:null,newForm:false,open:{}};
+const all=()=>['events','feelings','devices','questions','people'].flatMap(k=>W[k]);
+const get=id=>id&&KIND[id[0]]?W[KIND[id[0]].k].find(o=>o.id===id):undefined;
+const nameOf=id=>{const o=get(id); if(!o) return '（削除済み）'; return o.label||o.what||o.name||o.q||''};
+const firstPar=o=>o.ev&&o.ev.length?Math.min(...o.ev.map(e=>e.par)):9999;
+const pos=o=>{ if(!o.ev||!o.ev.length) return 1e9; const e=o.ev[0]; return e.par*1e5+Math.max(0,W.text[e.par-1].indexOf(e.quote)); };
+function newWork(title,author,raw){
+  const text=raw.replace(/\r/g,'').split(/\n+/).map(s=>s.replace(/^[\s　]+|[\s　]+$/g,'')).filter(Boolean);
+  return {id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,author,text,people:[],scenes:[],events:[],feelings:[],devices:[],questions:[],seq:{E:0,M:0,D:0,Q:0,P:0},updated:Date.now()};
+}
+function sampleWork(){ const s=SAMPLE,w=newWork(s.title+'（見本）',s.author,''); w.text=s.text; w.sample=true;
+  w.people=s.people.map(p=>({id:p.id,name:p.name,calls:p.calls.join('、'),note:p.note}));
+  w.scenes=s.scenes.map(x=>({from:x.from,name:x.name}));
+  w.events=s.events.map(e=>({id:e.id,who:e.who,what:e.what,flash:!!e.flash,ev:[e.ev]}));
+  w.feelings=s.feelings.map(m=>({id:m.id,who:m.who,label:m.label,toward:m.toward,kind:m.kind,cause:m.cause,action:m.action||'',ev:m.ev}));
+  w.devices=s.devices.map(d=>({id:d.id,type:d.type,name:d.name,effect:d.effect,links:d.links,ev:d.ev}));
+  w.questions=s.questions.map(q=>({id:q.id,type:q.type,q:q.q,limit:'',path:q.path,answer:q.answer,ev:[q.target]}));
+  w.seq={E:w.events.length,M:w.feelings.length,D:w.devices.length,Q:w.questions.length,P:w.people.length}; return w; }
+
+/* ---------- 点検 ---------- */
+function inspect(){
+  const out=[],add=(lv,id,msg)=>out.push({lv,id,msg});
+  for(const o of all().filter(o=>o.ev)) for(const e of o.ev) if(!W.text[e.par-1]||!W.text[e.par-1].includes(e.quote)) add('a',o.id,`引用が本文（¶${e.par}）と一致しない。`);
+  for(const m of W.feelings){
+    const c=m.cause&&get(m.cause), a=m.action&&get(m.action);
+    if(!c) add('a',m.id,'きっかけの出来事がつながっていない。この気持ちは何が起きて生まれた？');
+    else if(firstPar(c)>firstPar(m)&&!c.flash) add('b',m.id,`きっかけ（¶${firstPar(c)}）が心情（¶${firstPar(m)}）より後に語られている。回想なら、出来事に回想の印をつける。`);
+    if(a&&firstPar(a)<firstPar(m)) add('b',m.id,`行動（¶${firstPar(a)}）が心情（¶${firstPar(m)}）より前に語られている。順番を確かめる。`);
+    if(!m.toward) add('c',m.id,'「何に対して」が空。対象を書くと、似た心情との違いがはっきりする。');
+  }
+  for(const d of W.devices){ if(!d.effect) add('a',d.id,'効果（解釈）が書かれていない。'); if(!d.links.filter(get).length) add('b',d.id,'どの心情とも重ねていない。この表現は誰のどんな気持ちと響き合う？'); }
+  for(const q of W.questions){ const L=[...(q.answer||'')].length;
+    if(!q.path.filter(get).length) add('a',q.id,'たどる順が空。どのモノを根拠に答えるかを決める。');
+    if(!L) add('a',q.id,'解答がまだ書かれていない。');
+    else if(q.limit&&L>+q.limit) add('a',q.id,`解答が${L}字。制限の${q.limit}字を超えている。`);
+    else if(q.limit&&L<+q.limit*0.8) add('b',q.id,`解答が${L}字。制限${q.limit}字の8割（${Math.ceil(q.limit*0.8)}字）に届いていない。`);
+  }
+  const used=new Set(W.feelings.flatMap(m=>[m.cause,m.action]).concat(W.questions.flatMap(q=>q.path)));
+  for(const e of W.events) if(!used.has(e.id)) add('c',e.id,'どの心情にもつながっていない出来事。');
+  if(W.feelings.length>=3&&!W.feelings.some(m=>m.kind==='暗示')) add('c',null,'暗示の心情が0件。行動・表情・せりふ・情景から読み取れる気持ちを見落としていないか。');
+  const cov=new Set(all().filter(o=>o.ev).flatMap(o=>o.ev.map(e=>e.par))),miss=W.text.map((_,i)=>i+1).filter(n=>!cov.has(n));
+  if(miss.length&&cov.size) add('c',null,`根拠が1つもない段落：${miss.map(n=>'¶'+n).join(' ')}`);
+  return out;
+}
+
+/* ---------- 描画：一覧 ---------- */
+function vHome(){
+  let h=`<header class="top"><h1>読解オントロジー工房</h1><span class="muted">小説を「出来事・心情・仕掛け」に分解して、入試問題を根拠つきで解く</span></header>`;
+  if(store.mode==='wait') return h+`<div class="empty">保存してある作品を読み込んでいる…</div>`;
+  h+=`<div class="panel dash"><ol class="steps"><li>小説の本文を貼り付けて作品を作る</li><li>本文をなぞって選び、出来事・心情・仕掛けとして登録する（選んだ部分がそのまま根拠になる）</li><li>心情に「きっかけ」と「行動」の出来事をつなぐ</li><li>点検タブで抜けを確認し、設問をたどって解答を書く</li></ol></div>`;
+  if(ui.msg) h+=`<div class="msg ${ui.msg.ok?'ok':''}" role="status">${esc(ui.msg.t)}</div>`;
+  h+=`<div class="row"><h2>作品</h2><span class="grow"></span><span class="muted">${store.mode==='cloud'?'あなた専用の場所に保存される':'この端末のブラウザにだけ保存される'}</span></div>`;
+  if(works.length) h+=`<div class="works">${works.slice().sort((a,b)=>b.updated-a.updated).map(w=>`<div class="work"><b>${esc(w.title)}</b><span class="muted">${esc(w.author||'')}　全${w.text.length}段落</span>
+    <div class="counts"><span>出来事 ${w.events.length}</span><span>心情 ${w.feelings.length}</span><span>仕掛け ${w.devices.length}</span><span>設問 ${w.questions.length}</span></div>
+    <div class="row"><button class="btn pri" data-a="open" data-id="${w.id}">開く</button><span class="grow"></span>${ui.confirm===w.id?`<button class="btn sm danger" data-a="delWork" data-id="${w.id}">本当に削除する</button><button class="btn sm" data-a="noConfirm">やめる</button>`:`<button class="btn sm" data-a="ask" data-id="${w.id}">削除</button>`}</div></div>`).join('')}</div>`;
+  else h+=`<div class="empty">まだ作品がない。下のボタンで本文を貼り付けるか、見本を追加して使い方を確かめる。</div>`;
+  h+=`<div class="row"><button class="btn pri" data-a="toggleNew">＋ 新しい作品を作る</button>${works.some(w=>w.sample)?'':'<button class="btn" data-a="addSample">見本「羅生門」を追加する</button>'}<label class="btn" for="imp">書き出したファイルを読み込む</label><input type="file" id="imp" accept=".json,application/json" hidden></div>`;
+  if(ui.newForm) h+=`<div class="panel narrow"><h3>新しい作品</h3><div class="grid2"><div class="field"><label for="nw-title">題名</label><input type="text" id="nw-title" placeholder="例：2024年度 第2問"></div><div class="field"><label for="nw-author">作者・出典</label><input type="text" id="nw-author"></div></div>
+    <div class="field"><label for="nw-text">本文（改行ごとに1段落として番号が振られる）</label><textarea id="nw-text" rows="10" placeholder="ここに本文を貼り付ける"></textarea></div>
+    <p class="muted">作ったあとは本文を書き換えられない（引用の位置がずれるため）。貼り付ける前に、ルビや注番号の混入がないか確かめておく。</p>
+    <div class="row"><button class="btn pri" data-a="create">作品を作る</button><button class="btn" data-a="toggleNew">やめる</button></div></div>`;
+  return h;
+}
+
+/* ---------- 描画：作業台 ---------- */
+function lk(id){ return get(id)?`<button class="lk" ${cv(id)} data-a="go" data-id="${id}"><span class="i">${id}</span>${esc(nameOf(id))}</button>`:''; }
+function quotes(o){ return o.ev.map((e,i)=>`<button class="q" data-a="show" data-id="${o.id}" data-i="${i}"><span class="pn">¶${e.par}</span><span class="t">${esc(e.quote)}</span></button>`).join(''); }
+function tools(o){ return `<div class="row"><span class="grow"></span><button class="btn sm" data-a="edit" data-id="${o.id}">編集</button>${ui.confirm===o.id?`<button class="btn sm danger" data-a="del" data-id="${o.id}">本当に削除する</button><button class="btn sm" data-a="noConfirm">やめる</button>`:`<button class="btn sm" data-a="ask" data-id="${o.id}">削除</button>`}</div>`; }
+function card(o,body){ return `<div class="card ${ui.sel===o.id?'on':''}" id="c-${o.id}" ${cv(o.id)}>${body}${tools(o)}</div>`; }
+const who=id=>{const p=id&&get(id);return p?p.name:''};
+function cardOf(o){
+  const t=o.id[0];
+  if(t==='E'){ const i=W.events.indexOf(o); return card(o,`<div class="card-h"><span class="id">${o.id}</span><b>${esc(o.what)}</b>${o.who?`<span class="pill">${esc(who(o.who))}</span>`:''}${o.flash?'<span class="pill">回想</span>':''}</div>${quotes(o)}
+    <div class="row"><span class="muted">起きた順 ${i+1}番目</span><button class="btn sm" data-a="up" data-id="${o.id}" ${i?'':'disabled'} aria-label="順番を前へ">↑ 前へ</button><button class="btn sm" data-a="down" data-id="${o.id}" ${i<W.events.length-1?'':'disabled'} aria-label="順番を後ろへ">↓ 後ろへ</button></div>`); }
+  if(t==='M') return card(o,`<div class="card-h"><span class="id">${o.id}</span><b>${esc(o.label)}</b><span class="pill">${o.kind}</span>${o.who?`<span class="pill">${esc(who(o.who))}</span>`:''}</div>
+    <dl class="chain"><dt>きっかけ</dt><dd>${lk(o.cause)||'<span class="none">まだつながっていない</span>'}</dd><dt>何に対して</dt><dd>${esc(o.toward)||'<span class="muted">（未記入）</span>'}</dd><dt>行動</dt><dd>${lk(o.action)||'<span class="muted">（なし）</span>'}</dd></dl>${quotes(o)}`);
+  if(t==='D') return card(o,`<div class="card-h"><span class="id">${o.id}</span><b>${esc(o.name)}</b><span class="pill">${esc(o.type)}</span></div>${quotes(o)}${o.effect?`<p class="interp" style="font-size:14px">${esc(o.effect)}</p>`:'<span class="none">効果（解釈）がまだ書かれていない</span>'}
+    <div class="row"><span class="muted">重なる心情</span>${o.links.map(lk).join('')||'<span class="muted">（なし）</span>'}</div>`);
+  if(t==='Q'){ const L=[...(o.answer||'')].length; return card(o,`<div class="card-h"><span class="id">${o.id}</span><span class="pill">${esc(o.type)}</span>${o.limit?`<span class="pill">${esc(o.limit)}字以内</span>`:''}</div><b style="font-size:15px;overflow-wrap:anywhere">${esc(o.q)}</b>${quotes(o)}
+    <div class="row"><span class="muted">たどる順</span>${o.path.filter(get).map((p,i)=>(i?'<span class="muted">→</span>':'')+lk(p)).join('')||'<span class="none">まだ決めていない</span>'}</div>
+    ${o.answer?(ui.open[o.id]?`<div class="ans">${esc(o.answer)}</div><span class="cnt">${L}字</span>`:`<div><button class="btn sm" data-a="openAns" data-id="${o.id}">解答を表示（${L}字）</button></div>`):'<span class="none">解答がまだ書かれていない</span>'}`); }
+  return card(o,`<div class="card-h"><span class="id">${o.id}</span><b>${esc(o.name)}</b></div>${o.calls?`<div class="muted">呼ばれ方：${esc(o.calls)}</div>`:''}${o.note?`<p style="font-size:14px">${esc(o.note)}</p>`:''}`);
+}
+function opt(list,cur,ph){ return (ph?`<option value="">${ph}</option>`:'')+list.map(([v,t])=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(t)}</option>`).join(''); }
+const pOpts=()=>W.people.map(p=>[p.id,p.name]);
+const eOpts=()=>W.events.map(e=>[e.id,`${e.id} ${e.what}`.slice(0,40)]);
+function form(){
+  const e=ui.edit,d=e.d,t=e.kind,f=(k,l,html)=>`<div class="field"><label for="f-${k}">${l}</label>${html}</div>`;
+  const inp=(k,ph)=>`<input type="text" id="f-${k}" data-f="${k}" value="${esc(d[k])}" placeholder="${ph||''}">`;
+  let b='';
+  if(t==='E') b=f('what','何をした・何が起きた',inp('what','例：老婆が死人の髪を抜く'))+`<div class="grid2">${f('who','誰が',`<select id="f-who" data-f="who">${opt(pOpts(),d.who,'（選ばない）')}</select>`)}<div class="field"><span class="flab">回想</span><label style="font-size:14px"><input type="checkbox" id="f-flash" data-f="flash" ${d.flash?'checked':''}> 語られる位置より前に起きた出来事</label></div></div>`;
+  if(t==='M') b=f('label','どんな心情か',inp('label','例：悪に対するはげしい憎悪'))+`<div class="grid2">${f('who','誰の',`<select id="f-who" data-f="who">${opt(pOpts(),d.who,'選ぶ')}</select>`)}${f('toward','何に対して',inp('toward','例：老婆'))}</div>
+    <div class="field"><span class="flab">本文での示され方</span><div class="row"><label><input type="radio" name="kind" id="f-kind1" data-f="kind" value="明示" ${d.kind==='明示'?'checked':''}> 明示（心情を表す言葉で書いてある）</label><label><input type="radio" name="kind" id="f-kind2" data-f="kind" value="暗示" ${d.kind==='暗示'?'checked':''}> 暗示（行動・表情・情景から読み取る）</label></div></div>
+    <div class="grid2">${f('cause','きっかけの出来事',`<select id="f-cause" data-f="cause">${opt(eOpts(),d.cause,'（あとでつなぐ）')}</select>`)}${f('action','この心情から出た行動',`<select id="f-action" data-f="action">${opt(eOpts(),d.action,'（なし）')}</select>`)}</div>`;
+  if(t==='D') b=`<div class="grid2">${f('name','名前',inp('name','例：面皰（にきび）'))}${f('type','種類',`<select id="f-type" data-f="type">${opt(DTYPES.map(x=>[x,x]),d.type)}</select>`)}</div>`
+    +f('effect','効果（あなたの解釈。本文に書いてあることとは分けて書く）',`<textarea id="f-effect" data-f="effect" rows="3">${esc(d.effect)}</textarea>`)
+    +`<div class="field"><span class="flab">重なる心情</span>${W.feelings.length?`<div class="checks">${W.feelings.map(m=>`<label><input type="checkbox" id="f-l-${m.id}" data-link="${m.id}" ${d.links.includes(m.id)?'checked':''}> ${m.id} ${esc(m.label)}</label>`).join('')}</div>`:'<span class="muted">心情を登録すると、ここで選べる。</span>'}</div>`;
+  if(t==='Q'){ const L=[...(d.answer||'')].length;
+    b=f('q','設問文',`<textarea id="f-q" data-f="q" rows="2" placeholder="例：傍線部「ある勇気」とはどのような勇気か。">${esc(d.q)}</textarea>`)+`<div class="grid2">${f('type','設問の型',`<select id="f-type" data-f="type">${opt(QTYPES.map(x=>[x,x]),d.type)}</select>`)}${f('limit','字数制限（なければ空）',`<input type="number" id="f-limit" data-f="limit" min="1" value="${esc(d.limit)}">`)}</div>
+    <div class="field"><span class="flab">たどる順（答えの根拠にするモノを、考える順に並べる）</span><div class="row">${d.path.map((p,i)=>(i?'<span class="muted">→</span>':'')+`<span class="lk" ${cv(p)}><span class="i">${p}</span>${esc(nameOf(p)).slice(0,18)} <button class="btn sm" data-a="pathDel" data-i="${i}" aria-label="外す">×</button></span>`).join('')||'<span class="muted">まだ空</span>'}</div>
+      <div class="row"><select id="f-pathadd" aria-label="たどる順に追加するモノ">${opt([...W.feelings,...W.events,...W.devices].map(o=>[o.id,`${o.id} ${nameOf(o.id)}`.slice(0,40)]),'','モノを選ぶ')}</select><button class="btn sm" data-a="pathAdd">追加</button></div></div>`
+    +f('answer','解答',`<textarea id="f-answer" data-f="answer" rows="4">${esc(d.answer)}</textarea>`)+`<span class="cnt" id="anscnt">${L}字</span>`; }
+  if(t==='P') b=f('name','名前',inp('name','例：下人'))+f('calls','本文での呼ばれ方',inp('calls','例：この男、己'))+f('note','メモ',`<textarea id="f-note" data-f="note" rows="2">${esc(d.note)}</textarea>`);
+  const evs=t==='P'?'':`<div class="field"><span class="flab">${t==='Q'?'傍線部（本文の該当箇所）':'本文の根拠'}</span>${d.ev.map((x,i)=>`<div class="qx"><div class="q"><span class="pn">¶${x.par}</span><span class="t">${esc(x.quote)}</span></div><button class="btn sm" data-a="evDel" data-i="${i}" aria-label="この根拠を外す">×</button></div>`).join('')||'<span class="none">根拠がない。本文をなぞって選び、「根拠に追加」を押す。</span>'}
+    <div><button class="btn sm" data-a="evAdd" ${ui.pending&&ui.pending.quote?'':'disabled'}>選択中の箇所を根拠に追加</button></div></div>`;
+  return `<div class="card form" id="form" style="--c:var(${KIND[t].c})"><div class="card-h"><b>${KIND[t].n}を${e.id?'編集':'登録'}</b>${e.id?`<span class="id">${e.id}</span>`:''}</div>${evs}${b}${ui.msg&&ui.msg.at==='form'?`<div class="msg" role="alert">${esc(ui.msg.t)}</div>`:''}<div class="row"><button class="btn pri" data-a="save">${e.id?'変更を保存':'登録する'}</button><button class="btn" data-a="cancel">やめる</button></div></div>`;
+}
+const HINT={M:'本文で気持ちが分かる箇所をなぞって選び、上のバーの「心情」を押す。',E:'「誰が何をした」が分かる箇所をなぞって選び、「出来事」を押す。並び順が「起きた順」になる。',D:'くり返し出てくる物、比喩、情景描写などをなぞって選び、「仕掛け」を押す。',Q:'設問の傍線部をなぞって選び、「設問」を押す。',P:'登場人物を登録しておくと、出来事や心情で選べる。'};
+function vSide(){
+  const iss=inspect(),na=iss.filter(i=>i.lv==='a').length;
+  let h=`<div class="tabs" role="tablist">${['M','E','D','Q','P'].map(t=>`<button class="tab" role="tab" style="--c:var(${KIND[t].c})" aria-selected="${ui.tab===t}" data-a="tab" data-t="${t}">${KIND[t].n}<span class="n">${W[KIND[t].k].length}</span></button>`).join('')}<button class="tab" role="tab" aria-selected="${ui.tab==='C'}" data-a="tab" data-t="C">点検<span class="n">${na||'✓'}</span></button></div>`;
+  if(ui.msg&&ui.msg.at==='side') h+=`<div class="msg ${ui.msg.ok?'ok':''}" role="status">${esc(ui.msg.t)}</div>`;
+  if(ui.tab==='C'){
+    const m=W.feelings,ex=m.filter(x=>x.kind==='明示').length;
+    h+=`<div class="panel"><div class="stat"><span><b>${W.events.length}</b> 出来事</span><span><b>${m.length}</b> 心情（明示${ex}・暗示${m.length-ex}）</span><span><b>${W.devices.length}</b> 仕掛け</span><span><b>${W.questions.length}</b> 設問</span></div>
+      ${iss.length?iss.map(i=>`<div class="iss"><span class="lv ${i.lv}">${{a:'要修正',b:'確認',c:'ヒント'}[i.lv]}</span><div>${i.id?lk(i.id)+' ':''}${esc(i.msg)}</div></div>`).join(''):`<div class="msg ok">指摘なし。${all().length?'':'まだ何も登録されていない。'}</div>`}</div>`;
+    return h;
+  }
+  const t=ui.tab,list=W[KIND[t].k].slice(); if(t==='M'||t==='D'||t==='Q') list.sort((a,b)=>pos(a)-pos(b));
+  if(ui.edit&&ui.edit.kind===t) h+=form();
+  else if(t==='P') h+=`<div><button class="btn pri" data-a="newP">＋ 人物を追加</button></div>`;
+  h+=`<div class="cards">${list.filter(o=>!(ui.edit&&ui.edit.id===o.id)).map(cardOf).join('')||`<div class="empty">${HINT[t]}</div>`}</div>`;
+  return h;
+}
+function vText(){
+  const act=ui.sel&&get(ui.sel)&&get(ui.sel).ev||[],tags={};
+  for(const o of all().filter(o=>o.ev)) for(const e of o.ev)(tags[e.par]=tags[e.par]||new Set()).add(o.id);
+  return W.text.map((t,i)=>{ const n=i+1; let h=esc(t);
+    for(const e of act) if(e.par===n){ const q=esc(e.quote); h=h.replace(q,`<mark>${q}</mark>`); }
+    const s=W.scenes.find(s=>s.from===n);
+    return `<div class="para" id="p${n}">${s?`<div class="scene-lab">場面<input type="text" id="sc-${n}" data-scene="${n}" value="${esc(s.name)}" aria-label="場面の名前"><button class="btn sm" data-a="scene" data-n="${n}">区切りを外す</button></div>`:''}<button class="no" data-a="scene" data-n="${n}" title="ここから新しい場面にする" ${s?'disabled':''}>${n}</button><div><span class="pt" data-n="${n}">${h}</span><span class="tags">${[...(tags[n]||[])].map(id=>`<button class="tg" ${cv(id)} data-a="go" data-id="${id}" title="${esc(nameOf(id))}">${id}</button>`).join('')}</span></div></div>`; }).join('');
+}
+function vSelbar(){
+  const p=ui.pending;
+  if(!p) return `<span class="muted">本文をなぞって選ぶと、ここに登録ボタンが出る。段落番号を押すと、そこから場面を区切れる。</span>`;
+  if(p.err) return `<span style="color:var(--bad)">${esc(p.err)}</span>`;
+  return `<div class="selq"><span class="cnt">¶${p.par}</span> ${esc(p.quote)}</div><div class="row">${ui.edit&&ui.edit.kind!=='P'?`<button class="btn sm pri" data-a="evAdd">編集中のカードの根拠に追加</button>`:['E','M','D','Q'].map(t=>`<button class="btn sm" style="border-color:var(${KIND[t].c});font-weight:700" data-a="new" data-t="${t}">${KIND[t].n}</button>`).join('')+'<span class="muted">として登録</span>'}<span class="grow"></span><button class="btn sm" data-a="clearSel">選択を解除</button></div>`;
+}
+function vWork(){
+  return `<header class="top"><button class="btn sm" data-a="home">← 作品一覧</button><h1>${esc(W.title)}</h1><span class="muted">${esc(W.author||'')}</span><span class="grow"></span><span class="muted" id="save">${esc(saveState)}</span><button class="btn sm" data-a="export">書き出す</button></header>
+  <div class="bench"><div class="text"><div class="text-head"><b>本文</b><span class="muted">全${W.text.length}段落</span></div><div class="selbar" id="selbar"></div><div class="paras" id="paras"></div></div><div class="side" id="side"></div></div>`;
+}
+function render(){ if(ui.view==='home'||!W){ $('app').innerHTML=vHome(); return; } $('app').innerHTML=vWork(); paintText(); paintSide(); paintSel(); }
+function paintSide(){ const s=$('side'); if(s) s.innerHTML=vSide(); }
+function paintText(){ const box=$('paras'); if(!box) return; const y=box.scrollTop; box.innerHTML=vText(); box.scrollTop=y; }
+function paintSel(){ const b=$('selbar'); if(!b) return; b.innerHTML=vSelbar(); b.classList.toggle('has',!!(ui.pending&&ui.pending.quote)); const a=document.querySelector('#form [data-a=evAdd]'); if(a) a.disabled=!(ui.pending&&ui.pending.quote); }
+function scrollToEv(e){ const box=$('paras'),p=$('p'+e.par); if(!box||!p) return; const m=p.querySelector('mark')||p; box.scrollTo({top:m.getBoundingClientRect().top-box.getBoundingClientRect().top+box.scrollTop-50,behavior:'smooth'}); }
+function show(id,i,toCard){ const o=get(id); if(!o) return; ui.sel=id; if(toCard){ ui.tab=id[0]; paintSide(); const c=$('c-'+id); if(c) c.scrollIntoView({block:'nearest',behavior:'smooth'}); } else paintSide(); paintText(); if(o.ev&&o.ev[i||0]) scrollToEv(o.ev[i||0]); }
+
+/* ---------- 本文の選択 ---------- */
+document.addEventListener('selectionchange',()=>{
+  if(ui.view!=='work') return; const s=getSelection(); if(!s||s.isCollapsed||!s.rangeCount) return;
+  const up=n=>{ n=n&&(n.nodeType===1?n:n.parentElement); return n&&n.closest('.pt'); };
+  const a=up(s.anchorNode),f=up(s.focusNode); if(!a&&!f) return;
+  if(!a||!f||a!==f){ ui.pending={err:'選択が段落をまたいでいる。根拠は1つの段落の中から選ぶ（長い場合は2つに分けて追加する）。'}; paintSel(); return; }
+  const q=s.toString().replace(/\s+/g,'').length?s.toString().trim():''; if(!q) return;
+  const par=+a.dataset.n; if(!W.text[par-1].includes(q)) return;
+  ui.pending={par,quote:q}; paintSel();
+});
+
+/* ---------- 操作 ---------- */
+function blank(t){ return {E:{who:'',what:'',flash:false},M:{who:W.people[0]?.id||'',label:'',toward:'',kind:'明示',cause:'',action:''},D:{type:DTYPES[0],name:'',effect:'',links:[]},Q:{type:QTYPES[0],q:'',limit:'',path:[],answer:''},P:{name:'',calls:'',note:''}}[t]; }
+function saveForm(){
+  const e=ui.edit,d=e.d,t=e.kind,fail=m=>{ui.msg={t:m,at:'form'};paintSide();};
+  if(t!=='P'&&!d.ev.length) return fail('登録できない：本文の根拠が1つもない。本文をなぞって選び、「根拠に追加」を押す。');
+  const need={E:['what','何が起きたか'],M:['label','どんな心情か'],D:['name','名前'],Q:['q','設問文'],P:['name','名前']}[t];
+  if(!String(d[need[0]]).trim()) return fail(`登録できない：「${need[1]}」が空。`);
+  if(t==='M'&&!d.who) return fail(W.people.length?'登録できない：「誰の」心情かを選ぶ。':'登録できない：先に「人物」タブで人物を登録して、「誰の」心情かを選ぶ。');
+  if(e.id) Object.assign(get(e.id),d); else { const id=t+(++W.seq[t]); W[KIND[t].k].push({id,...d}); ui.sel=id; }
+  ui.edit=null; ui.msg=null; ui.pending=null; getSelection()?.removeAllRanges(); touch(); render();
+}
+function remove(id){ const k=KIND[id[0]].k; W[k]=W[k].filter(o=>o.id!==id);
+  for(const m of W.feelings){ if(m.cause===id)m.cause=''; if(m.action===id)m.action=''; if(m.who===id)m.who=''; }
+  for(const ev of W.events) if(ev.who===id) ev.who='';
+  for(const d of W.devices) d.links=d.links.filter(x=>x!==id);
+  for(const q of W.questions) q.path=q.path.filter(x=>x!==id);
+  if(ui.sel===id) ui.sel=null; ui.confirm=null; touch(); render(); }
+async function exportWork(){ const data=JSON.stringify(W,null,1),name=(W.title||'reading').replace(/[\\/:*?"<>|]/g,'_')+'.json';
+  try{ const dl=window.claude?.use?await claude.use('downloads'):null; if(dl){ await dl.save({filename:name,data}); ui.msg={t:'ファイルに書き出した。',ok:true,at:'side'}; } else { await navigator.clipboard.writeText(data); ui.msg={t:'この画面ではファイルに保存できないので、データをクリップボードにコピーした。メモ帳などに貼り付けて保存する。',ok:true,at:'side'}; } }
+  catch(e){ ui.msg={t:e&&e.code==='declined'?'書き出しを取りやめた。':'書き出せなかった。',at:'side'}; } paintSide(); }
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]'); if(!b) return; const {a,id,t,i,n}=b.dataset;
+  if(a==='toggleNew'){ ui.newForm=!ui.newForm; ui.msg=null; render(); }
+  else if(a==='create'){ const title=$('nw-title').value.trim(),text=$('nw-text').value; const w=newWork(title||'無題',$('nw-author').value.trim(),text);
+    if(!w.text.length){ ui.msg={t:'本文が空。小説の本文を貼り付ける。'}; const keep=[title,$('nw-author').value]; render(); $('nw-title').value=keep[0]; $('nw-author').value=keep[1]; return; }
+    works.push(w); W=w; ui.view='work'; ui.tab='P'; ui.newForm=false; ui.msg={t:'作品を作った。まず「人物」を登録してから、本文をなぞって出来事や心情を登録していく。',ok:true,at:'side'}; ui.sel=ui.edit=ui.pending=null; touch(); render(); }
+  else if(a==='addSample'){ const w=sampleWork(); works.push(w); touch(w); ui.msg={t:'見本「羅生門」を追加した。開いて中身を見たり、書き換えて試したりできる。',ok:true}; render(); }
+  else if(a==='open'){ flush(); W=works.find(w=>w.id===id); ui.view='work'; ui.tab='M'; ui.sel=ui.edit=ui.pending=ui.msg=ui.confirm=null; saveState=''; render(); scrollTo(0,0); }
+  else if(a==='home'){ clearTimeout(timer); flush(); ui.view='home'; ui.msg=null; ui.confirm=null; render(); }
+  else if(a==='ask'){ ui.confirm=id; ui.view==='home'?render():paintSide(); }
+  else if(a==='noConfirm'){ ui.confirm=null; ui.view==='home'?render():paintSide(); }
+  else if(a==='delWork'){ works=works.filter(w=>w.id!==id); ui.confirm=null; store.remove(id).then(()=>{ui.msg={t:'作品を削除した。',ok:true};render();},()=>{ui.msg={t:'削除に失敗した。'};render();}); render(); }
+  else if(a==='tab'){ ui.tab=t; if(ui.edit&&ui.edit.kind!==t) {} ui.msg=null; paintSide(); }
+  else if(a==='new'){ if(!ui.pending||!ui.pending.quote) return; ui.edit={kind:t,id:null,d:{...blank(t),ev:[ui.pending]}}; ui.tab=t; ui.pending=null; ui.msg=null; getSelection()?.removeAllRanges(); paintSide(); paintSel(); $('form')?.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+  else if(a==='newP'){ ui.edit={kind:'P',id:null,d:blank('P')}; ui.msg=null; paintSide(); $('f-name')?.focus(); }
+  else if(a==='edit'){ const o=get(id); ui.edit={kind:id[0],id,d:JSON.parse(JSON.stringify(o))}; delete ui.edit.d.id; ui.tab=id[0]; ui.msg=null; paintSide(); paintSel(); $('form')?.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+  else if(a==='cancel'){ ui.edit=null; ui.msg=null; paintSide(); paintSel(); }
+  else if(a==='save'){ saveForm(); }
+  else if(a==='del'){ remove(id); }
+  else if(a==='evAdd'){ const p=ui.pending; if(!p||!p.quote||!ui.edit) return; if(!ui.edit.d.ev.some(x=>x.par===p.par&&x.quote===p.quote)) ui.edit.d.ev.push(p); ui.pending=null; ui.msg=null; getSelection()?.removeAllRanges(); ui.tab=ui.edit.kind; paintSide(); paintSel(); }
+  else if(a==='evDel'){ ui.edit.d.ev.splice(+i,1); paintSide(); paintSel(); }
+  else if(a==='pathAdd'){ const v=$('f-pathadd').value; if(v){ ui.edit.d.path.push(v); paintSide(); paintSel(); } }
+  else if(a==='pathDel'){ ui.edit.d.path.splice(+i,1); paintSide(); paintSel(); }
+  else if(a==='clearSel'){ ui.pending=null; getSelection()?.removeAllRanges(); paintSel(); }
+  else if(a==='show'){ show(id,+i,false); }
+  else if(a==='go'){ show(id,0,true); }
+  else if(a==='openAns'){ ui.open[id]=true; paintSide(); }
+  else if(a==='up'||a==='down'){ const k=W.events.findIndex(o=>o.id===id),j=k+(a==='up'?-1:1); [W.events[k],W.events[j]]=[W.events[j],W.events[k]]; touch(); paintSide(); }
+  else if(a==='scene'){ const k=W.scenes.findIndex(s=>s.from===+n); if(k>=0) W.scenes.splice(k,1); else W.scenes.push({from:+n,name:'場面'+(W.scenes.length+1)}); touch(); paintText(); }
+  else if(a==='export'){ exportWork(); }
+});
+function onField(e){ const el=e.target;
+  if(el.dataset.scene){ const s=W.scenes.find(s=>s.from===+el.dataset.scene); if(s&&s.name!==el.value){ s.name=el.value; touch(); } return; }
+  if(!ui.edit) return; const d=ui.edit.d;
+  if(el.dataset.f){ const k=el.dataset.f; if(el.type==='checkbox') d[k]=el.checked; else if(el.type==='radio'){ if(el.checked) d[k]=el.value; } else d[k]=el.value;
+    if(k==='answer'||k==='limit'){ const c=$('anscnt'),L=[...(d.answer||'')].length; if(c){ c.textContent=L+'字'+(d.limit?` ／ ${d.limit}字以内`:''); c.classList.toggle('over',!!d.limit&&L>+d.limit); } } }
+  else if(el.dataset.link){ const id=el.dataset.link; d.links=d.links.filter(x=>x!==id); if(el.checked) d.links.push(id); }
+}
+document.addEventListener('input',onField); document.addEventListener('change',e=>{ onField(e);
+  if(e.target.id==='imp'&&e.target.files[0]){ const r=new FileReader(); r.onload=()=>{ try{ const w=JSON.parse(r.result); if(!Array.isArray(w.text)||!w.text.length) throw 0;
+      const n=newWork(w.title||'読み込んだ作品',w.author||'',''); for(const k of ['text','people','scenes','events','feelings','devices','questions']) if(Array.isArray(w[k])) n[k]=w[k]; if(w.seq) n.seq={...n.seq,...w.seq};
+      works.push(n); touch(n); ui.msg={t:`「${n.title}」を読み込んだ。`,ok:true}; }catch(x){ ui.msg={t:'読み込めなかった。このツールで書き出した .json ファイルを選ぶ。'}; } render(); }; r.readAsText(e.target.files[0]); } });
+window.addEventListener('pagehide',()=>{ if(dirtyW&&store.mode==='local'){ try{store.saveLocal()}catch(e){} } });
+
+render();
+store.init().then(list=>{ works=list; render(); });
+</script>
