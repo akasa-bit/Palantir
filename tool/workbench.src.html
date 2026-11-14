@@ -109,6 +109,13 @@ mark{background:var(--hl);color:var(--hl-ink);padding:2px 0;border-radius:2px}
 .empty{font-size:14px;color:var(--muted);border:1px dashed var(--line-strong);padding:14px}
 .cnt{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .cnt.over{color:var(--bad);font-weight:700}
+.ocr{border:1px dashed var(--line-strong);padding:12px;display:flex;flex-direction:column;gap:8px}
+.ocr.drag{border-color:var(--accent);background:var(--accent-soft)}
+.imgs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;counter-reset:im}
+.imgs li{counter-increment:im;display:flex;gap:8px;align-items:center;font-size:13px}
+.imgs li::before{content:counter(im) "枚目";font-family:var(--f-mono);font-size:11px;color:var(--muted);flex:none}
+.imgs img{width:34px;height:44px;object-fit:cover;border:1px solid var(--line);flex:none}
+.imgs span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 
 <div class="wrap" id="app"></div>
@@ -190,7 +197,7 @@ function inspect(){
 function vHome(){
   let h=`<header class="top"><h1>読解オントロジー工房</h1><span class="muted">小説を「出来事・心情・仕掛け」に分解して、入試問題を根拠つきで解く</span></header>`;
   if(store.mode==='wait') return h+`<div class="empty">保存してある作品を読み込んでいる…</div>`;
-  h+=`<div class="panel dash"><ol class="steps"><li>小説の本文を貼り付けて作品を作る</li><li>本文をなぞって選び、出来事・心情・仕掛けとして登録する（選んだ部分がそのまま根拠になる）</li><li>心情に「きっかけ」と「行動」の出来事をつなぐ</li><li>点検タブで抜けを確認し、設問をたどって解答を書く</li></ol></div>`;
+  h+=`<div class="panel dash"><ol class="steps"><li>小説の本文を貼り付けるか、本文の画像から文字起こしして、作品を作る</li><li>本文をなぞって選び、出来事・心情・仕掛けとして登録する（選んだ部分がそのまま根拠になる）</li><li>心情に「きっかけ」と「行動」の出来事をつなぐ</li><li>点検タブで抜けを確認し、設問をたどって解答を書く</li></ol></div>`;
   if(ui.msg) h+=`<div class="msg ${ui.msg.ok?'ok':''}" role="status">${esc(ui.msg.t)}</div>`;
   h+=`<div class="row"><h2>作品</h2><span class="grow"></span><span class="muted">${store.mode==='cloud'?'あなた専用の場所に保存される':'この端末のブラウザにだけ保存される'}</span></div>`;
   if(works.length) h+=`<div class="works">${works.slice().sort((a,b)=>b.updated-a.updated).map(w=>`<div class="work"><b>${esc(w.title)}</b><span class="muted">${esc(w.author||'')}　全${w.text.length}段落</span>
@@ -199,8 +206,9 @@ function vHome(){
   else h+=`<div class="empty">まだ作品がない。下のボタンで本文を貼り付けるか、見本を追加して使い方を確かめる。</div>`;
   h+=`<div class="row"><button class="btn pri" data-a="toggleNew">＋ 新しい作品を作る</button>${works.some(w=>w.sample)?'':'<button class="btn" data-a="addSample">見本「羅生門」を追加する</button>'}<label class="btn" for="imp">書き出したファイルを読み込む</label><input type="file" id="imp" accept=".json,application/json" hidden></div>`;
   if(ui.newForm) h+=`<div class="panel narrow"><h3>新しい作品</h3><div class="grid2"><div class="field"><label for="nw-title">題名</label><input type="text" id="nw-title" placeholder="例：2024年度 第2問"></div><div class="field"><label for="nw-author">作者・出典</label><input type="text" id="nw-author"></div></div>
+    <div class="ocr" id="ocr"></div>
     <div class="field"><label for="nw-text">本文（改行ごとに1段落として番号が振られる）</label><textarea id="nw-text" rows="10" placeholder="ここに本文を貼り付ける"></textarea></div>
-    <p class="muted">作ったあとは本文を書き換えられない（引用の位置がずれるため）。貼り付ける前に、ルビや注番号の混入がないか確かめておく。</p>
+    <p class="muted">作ったあとは本文を書き換えられない（引用の位置がずれるため）。作る前に、誤字、ルビや注番号の混入、段落の切れ目を確かめておく。</p>
     <div class="row"><button class="btn pri" data-a="create">作品を作る</button><button class="btn" data-a="toggleNew">やめる</button></div></div>`;
   return h;
 }
@@ -283,7 +291,7 @@ function vWork(){
   return `<header class="top"><button class="btn sm" data-a="home">← 作品一覧</button><h1>${esc(W.title)}</h1><span class="muted">${esc(W.author||'')}</span><span class="grow"></span><span class="muted" id="save">${esc(saveState)}</span><button class="btn sm" data-a="export">書き出す</button></header>
   <div class="bench"><div class="text"><div class="text-head"><b>本文</b><span class="muted">全${W.text.length}段落</span></div><div class="selbar" id="selbar"></div><div class="paras" id="paras"></div></div><div class="side" id="side"></div></div>`;
 }
-function render(){ if(ui.view==='home'||!W){ $('app').innerHTML=vHome(); return; } $('app').innerHTML=vWork(); paintText(); paintSide(); paintSel(); }
+function render(){ if(ui.view==='home'||!W){ const keep=['nw-title','nw-author','nw-text'].map(i=>$(i)?.value); $('app').innerHTML=vHome(); keep.forEach((v,i)=>{ const el=$(['nw-title','nw-author','nw-text'][i]); if(el&&v!=null) el.value=v; }); paintOcr(); return; } $('app').innerHTML=vWork(); paintText(); paintSide(); paintSel(); }
 function paintSide(){ const s=$('side'); if(s) s.innerHTML=vSide(); }
 function paintText(){ const box=$('paras'); if(!box) return; const y=box.scrollTop; box.innerHTML=vText(); box.scrollTop=y; }
 function paintSel(){ const b=$('selbar'); if(!b) return; b.innerHTML=vSelbar(); b.classList.toggle('has',!!(ui.pending&&ui.pending.quote)); const a=document.querySelector('#form [data-a=evAdd]'); if(a) a.disabled=!(ui.pending&&ui.pending.quote); }
@@ -300,6 +308,49 @@ document.addEventListener('selectionchange',()=>{
   const par=+a.dataset.n; if(!W.text[par-1].includes(q)) return;
   ui.pending={par,quote:q}; paintSel();
 });
+
+/* ---------- 画像から文字起こし ---------- */
+const OCR_PROMPT=`この画像は、日本語の小説（入試問題などの本文）を写したものです。本文を一字一句そのまま文字に起こしてください。
+
+守ること：
+- 縦書きの場合は、右の行から左の行へ読む。段組みがあれば上の段から。
+- 文字を直さない。旧字・送り仮名・句読点・かぎ括弧も、画像のとおりに写す。
+- ルビ（ふりがな）は書かない。
+- 行番号、注の番号や記号（＊、注1 など）、傍線や波線につけられた記号（ア、A、①、X など）は入れない。傍線が引かれた部分の文字そのものは、本文として残す。
+- 空欄の記号（［　Ａ　］など）は、そのまま残す。
+- 1つの段落を1行にする。画像の中の単なる行の折り返しでは改行しない。段落の頭の字下げ（全角スペース）は入れない。
+- 設問文、前書き（リード文）、注釈、出典の表示は除き、小説の本文だけにする。
+- どうしても読めない文字は「〓」1字に置きかえる。推測で埋めない。
+- 説明や前置き、かぎ括弧やコードブロックでの囲みは付けず、本文だけを出力する。`;
+const ocr={sample:null,lim:null,ready:false,imgs:[],busy:false,ctl:null,status:'',msg:null};
+async function initOcr(){ try{ if(window.claude?.use){ const s=await claude.use('sample'); const l=s?await s.limits().catch(()=>null):null; if(s&&l&&l.images){ ocr.sample=s; ocr.lim=l.images; } } }catch(e){} ocr.ready=true; paintOcr(); }
+function paintOcr(){ const el=$('ocr'); if(!el) return;
+  if(!ocr.lim){ el.innerHTML=`<span class="muted">${ocr.ready?'画像からの文字起こしは、この画面では使えない。本文を下の欄に貼り付ける。':'画像の文字起こしが使えるか確認している…'}</span>`; return; }
+  el.innerHTML=`<div class="row"><b style="font-size:14px">画像から文字起こし</b><span class="muted">本文を撮った写真やスクリーンショットを、読む順に追加する。ここに貼り付け（Ctrl+V）やドラッグでも追加できる。</span></div>
+   ${ocr.imgs.length?`<ul class="imgs">${ocr.imgs.map((f,i)=>`<li><img src="${f.url}" alt=""><span>${esc(f.file.name||'貼り付けた画像')}（${Math.max(1,Math.round(f.file.size/1024))}KB）</span><button class="btn sm" data-a="ocrDel" data-i="${i}" ${ocr.busy?'disabled':''} aria-label="この画像を外す">×</button></li>`).join('')}</ul>`:''}
+   <div class="row"><label class="btn ${ocr.busy?'':'pri'}" for="ocr-file" ${ocr.busy?'style="opacity:.45;pointer-events:none"':''}>画像を選ぶ</label><input type="file" id="ocr-file" accept="${esc(ocr.lim.mediaTypes.join(','))}" multiple hidden>
+   ${ocr.busy?`<span role="status">${esc(ocr.status)}</span><button class="btn sm" data-a="ocrStop">止める</button>`:`<button class="btn" data-a="ocrRun" ${ocr.imgs.length?'':'disabled'}>文字起こしする（${ocr.imgs.length}枚）</button>`}</div>
+   ${ocr.msg?`<div class="msg ${ocr.msg.ok?'ok':''}" role="status">${esc(ocr.msg.t)}</div>`:''}`;
+}
+function addImages(files){ if(!ocr.lim||ocr.busy) return; let bad=0;
+  for(const f of files){ if(!ocr.lim.mediaTypes.includes(f.type)||f.size>ocr.lim.maxInputBytes){ bad++; continue; } ocr.imgs.push({file:f,url:URL.createObjectURL(f)}); }
+  ocr.msg=bad?{t:`${bad}枚は追加できなかった（対応していない形式か、${Math.floor(ocr.lim.maxInputBytes/1048576)}MB を超えている）。`}:null; paintOcr(); }
+async function runOcr(){ if(ocr.busy||!ocr.imgs.length) return; ocr.busy=true; ocr.msg=null; ocr.ctl=new AbortController(); const total=ocr.imgs.length; let done=0,err=null;
+  while(ocr.imgs.length){ ocr.status=`${total}枚中 ${done+1}枚目を読み取っている…（1枚に1分ほどかかることがある）`; paintOcr();
+    const ta=$('nw-text'); if(!ta){ err={code:'cancelled'}; break; } const base=ta.value.trim()?ta.value.replace(/\s+$/,'')+'\n':'';
+    const put=t=>{ const el=$('nw-text'); if(el){ el.value=base+t; el.scrollTop=el.scrollHeight; } };
+    try{ const r=await ocr.sample(OCR_PROMPT,{images:[ocr.imgs[0].file],signal:ocr.ctl.signal,cache:false,onText:({text})=>put(text)}); put(r.text.trim()+'\n'); URL.revokeObjectURL(ocr.imgs.shift().url); done++; }
+    catch(e){ err=e||{}; if(err.text) put(err.text); break; } }
+  ocr.busy=false; ocr.ctl=null;
+  const ta=$('nw-text'),miss=ta?(ta.value.match(/〓/g)||[]).length:0;
+  if(err){ const m={cancelled:'止めた。',not_granted:'Claude の利用が許可されなかったので、文字起こしできない。本文を下の欄に貼り付ける。',rate_limited:'続けて使いすぎた。少し待ってからもう一度押す。',queue_overflow:'続けて使いすぎた。少し待ってからもう一度押す。',image_rejected:'この画像は受け付けられなかった。別の形式で保存し直すか、撮り直す。',images_unavailable:'この画面では画像を送れない。',refused:'この画像は文字起こしできなかった。',session_expired:'接続が切れた。ページを開き直してからもう一度試す。'}[err.code]||'文字起こしに失敗した。もう一度押して試す。';
+    ocr.msg={t:`${m}${done?` ${done}枚目までは本文欄に入っている。`:''}${err.text?' 途中まで読めた分も残してある。':''}`}; }
+  else ocr.msg={t:`${done}枚を文字起こしした。${miss?`読めなかった文字（〓）が${miss}か所ある。`:''}読み取りには誤りが混じることがある。原文と見比べて、誤字と段落の切れ目（ページの境目で段落が分かれていないか）を直してから作品を作る。`,ok:!miss};
+  paintOcr(); }
+document.addEventListener('paste',e=>{ if(ui.view!=='home'||!ui.newForm||!ocr.lim) return; const fs=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/')); if(fs.length){ e.preventDefault(); addImages(fs); } });
+document.addEventListener('dragover',e=>{ const z=e.target.closest?.('#ocr'); if(z&&ocr.lim){ e.preventDefault(); z.classList.add('drag'); } });
+document.addEventListener('dragleave',e=>{ e.target.closest?.('#ocr')?.classList.remove('drag'); });
+document.addEventListener('drop',e=>{ const z=e.target.closest?.('#ocr'); if(!z||!ocr.lim) return; e.preventDefault(); z.classList.remove('drag'); addImages([...e.dataTransfer.files]); });
 
 /* ---------- 操作 ---------- */
 function blank(t){ return {E:{who:'',what:'',flash:false},M:{who:W.people[0]?.id||'',label:'',toward:'',kind:'明示',cause:'',action:''},D:{type:DTYPES[0],name:'',effect:'',links:[]},Q:{type:QTYPES[0],q:'',limit:'',path:[],answer:''},P:{name:'',calls:'',note:''}}[t]; }
@@ -325,7 +376,9 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]'); if(!b) return; const {a,id,t,i,n}=b.dataset;
   if(a==='toggleNew'){ ui.newForm=!ui.newForm; ui.msg=null; render(); }
   else if(a==='create'){ const title=$('nw-title').value.trim(),text=$('nw-text').value; const w=newWork(title||'無題',$('nw-author').value.trim(),text);
-    if(!w.text.length){ ui.msg={t:'本文が空。小説の本文を貼り付ける。'}; const keep=[title,$('nw-author').value]; render(); $('nw-title').value=keep[0]; $('nw-author').value=keep[1]; return; }
+    if(ocr.busy){ ui.msg={t:'文字起こしの途中。終わるのを待つか、「止める」を押してから作る。'}; render(); return; }
+    if(!w.text.length){ ui.msg={t:'本文が空。小説の本文を貼り付けるか、画像から文字起こしする。'}; render(); return; }
+    for(const i of ['nw-title','nw-author','nw-text']) $(i).value=''; ocr.imgs=[]; ocr.msg=null;
     works.push(w); W=w; ui.view='work'; ui.tab='P'; ui.newForm=false; ui.msg={t:'作品を作った。まず「人物」を登録してから、本文をなぞって出来事や心情を登録していく。',ok:true,at:'side'}; ui.sel=ui.edit=ui.pending=null; touch(); render(); }
   else if(a==='addSample'){ const w=sampleWork(); works.push(w); touch(w); ui.msg={t:'見本「羅生門」を追加した。開いて中身を見たり、書き換えて試したりできる。',ok:true}; render(); }
   else if(a==='open'){ flush(); W=works.find(w=>w.id===id); ui.view='work'; ui.tab='M'; ui.sel=ui.edit=ui.pending=ui.msg=ui.confirm=null; saveState=''; render(); scrollTo(0,0); }
@@ -351,6 +404,9 @@ document.addEventListener('click',e=>{
   else if(a==='up'||a==='down'){ const k=W.events.findIndex(o=>o.id===id),j=k+(a==='up'?-1:1); [W.events[k],W.events[j]]=[W.events[j],W.events[k]]; touch(); paintSide(); }
   else if(a==='scene'){ const k=W.scenes.findIndex(s=>s.from===+n); if(k>=0) W.scenes.splice(k,1); else W.scenes.push({from:+n,name:'場面'+(W.scenes.length+1)}); touch(); paintText(); }
   else if(a==='export'){ exportWork(); }
+  else if(a==='ocrRun'){ runOcr(); }
+  else if(a==='ocrStop'){ ocr.ctl?.abort(); }
+  else if(a==='ocrDel'){ URL.revokeObjectURL(ocr.imgs[+i].url); ocr.imgs.splice(+i,1); paintOcr(); }
 });
 function onField(e){ const el=e.target;
   if(el.dataset.scene){ const s=W.scenes.find(s=>s.from===+el.dataset.scene); if(s&&s.name!==el.value){ s.name=el.value; touch(); } return; }
@@ -360,6 +416,7 @@ function onField(e){ const el=e.target;
   else if(el.dataset.link){ const id=el.dataset.link; d.links=d.links.filter(x=>x!==id); if(el.checked) d.links.push(id); }
 }
 document.addEventListener('input',onField); document.addEventListener('change',e=>{ onField(e);
+  if(e.target.id==='ocr-file'){ addImages([...e.target.files]); return; }
   if(e.target.id==='imp'&&e.target.files[0]){ const r=new FileReader(); r.onload=()=>{ try{ const w=JSON.parse(r.result); if(!Array.isArray(w.text)||!w.text.length) throw 0;
       const n=newWork(w.title||'読み込んだ作品',w.author||'',''); for(const k of ['text','people','scenes','events','feelings','devices','questions']) if(Array.isArray(w[k])) n[k]=w[k]; if(w.seq) n.seq={...n.seq,...w.seq};
       works.push(n); touch(n); ui.msg={t:`「${n.title}」を読み込んだ。`,ok:true}; }catch(x){ ui.msg={t:'読み込めなかった。このツールで書き出した .json ファイルを選ぶ。'}; } render(); }; r.readAsText(e.target.files[0]); } });
@@ -367,4 +424,5 @@ window.addEventListener('pagehide',()=>{ if(dirtyW&&store.mode==='local'){ try{s
 
 render();
 store.init().then(list=>{ works=list; render(); });
+initOcr();
 </script>
