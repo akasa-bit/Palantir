@@ -1,0 +1,257 @@
+<title>小説読解オントロジー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+/* Layout: 上に「型」の説明。下は作業台で、左に本文（明朝・スクロール枠）、右に形式化したモノのカード。カードを押すと左の本文で根拠が光る。 */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --sunk:#e6ebe9; --ink:#17201d; --muted:#5a6863; --line:#cbd4d0; --line-strong:#8d9a95;
+  --accent:#0f6b5c; --accent-soft:#d5ebe6; --hl:#ffe08a; --hl-ink:#17201d;
+  --c-E:#1f5fae; --c-M:#b0372b; --c-D:#7a4b9c; --c-Q:#8a5a00; --c-R:#2f6e8c; --c-P:#0f6b5c;
+  --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-body:"IBM Plex Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-text:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111715; --surface:#19211e; --sunk:#0c110f; --ink:#e3ebe8; --muted:#9aa9a4; --line:#2b3633; --line-strong:#5d6c67;
+  --accent:#5fd0b8; --accent-soft:#16312b; --hl:#7a5c00; --hl-ink:#fff6d6;
+  --c-E:#86b4f5; --c-M:#f08f82; --c-D:#c49be6; --c-Q:#e8b85a; --c-R:#79c3e3; --c-P:#5fd0b8; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#19211e; --sunk:#0c110f; --ink:#e3ebe8; --muted:#9aa9a4; --line:#2b3633; --line-strong:#5d6c67;
+  --accent:#5fd0b8; --accent-soft:#16312b; --hl:#7a5c00; --hl-ink:#fff6d6;
+  --c-E:#86b4f5; --c-M:#f08f82; --c-D:#c49be6; --c-Q:#e8b85a; --c-R:#79c3e3; --c-P:#5fd0b8; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.8;
+  padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.col{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.wide{max-width:1180px;margin:0 auto}
+section{display:flex;flex-direction:column;gap:14px;padding-top:36px}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(28px,5.5vw,40px);line-height:1.3;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.45;margin:0;text-wrap:balance}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.answer{font-size:17px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent)}
+.note{font-size:14px;color:var(--muted);border-left:2px solid var(--line-strong);padding-left:12px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fig{border:1px solid var(--line);background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:600px;width:100%;height:auto}
+.g-box{fill:var(--surface);stroke-width:2}
+.g-n{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.g-s{font-size:11px;fill:var(--muted);font-family:var(--f-body)}
+.g-l{stroke:var(--line-strong);stroke-width:1.6;fill:none}
+.g-h{fill:var(--line-strong)}
+.g-ll{font-size:12px;fill:var(--ink);font-family:var(--f-body);font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:4px}
+.g-ev{fill:var(--sunk);stroke:var(--line-strong);stroke-dasharray:5 4;stroke-width:1.2}
+.rules{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px}
+.rules li{background:var(--surface);border:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.rules b{font-size:15px}
+.tscroll{overflow-x:auto;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:13px;color:var(--muted);background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* 作業台 */
+.bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:start}
+.text{position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;max-height:calc(100vh - 20px)}
+.text-head{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.text-head b{font-family:var(--f-text);font-size:18px}
+.text-head span{font-size:12px;color:var(--muted)}
+.now{padding:6px 16px;background:var(--sunk);font-size:13px;border-bottom:1px solid var(--line);min-height:2.2em}
+.paras{overflow-y:auto;padding:12px 16px 20px;font-family:var(--f-text);font-size:16px;line-height:2;display:flex;flex-direction:column;gap:4px}
+.para{display:grid;grid-template-columns:2em minmax(0,1fr);gap:8px}
+.para .no{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right;padding-top:8px}
+.para.scene-start{border-top:1px dashed var(--line-strong);margin-top:10px;padding-top:6px}
+.scene-lab{grid-column:1/-1;font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:700}
+.para .tags{display:inline-flex;gap:3px;margin-left:6px;vertical-align:2px}
+mark{background:var(--hl);color:var(--hl-ink);padding:2px 0;border-radius:2px}
+.tg{font-family:var(--f-mono);font-size:10px;line-height:1.5;padding:0 4px;border:1px solid var(--c);color:var(--c);background:none;border-radius:3px}
+@media (max-width:860px){ .bench{grid-template-columns:minmax(0,1fr)} .text{max-height:46vh;top:env(safe-area-inset-top,0px);z-index:5} }
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{font-size:14px;padding:5px 14px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:99px}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.tabdesc{font-size:14px;color:var(--muted)}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card.on{outline:2px solid var(--c)}
+.card-h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.card-h b{font-size:16px}
+.id{font-family:var(--f-mono);font-size:11px;color:var(--c);border:1px solid var(--c);border-radius:3px;padding:0 5px;line-height:1.6}
+.pill{font-size:11px;font-weight:700;border-radius:99px;padding:0 8px;border:1px solid var(--line-strong);color:var(--muted);line-height:1.7}
+.chain{display:grid;grid-template-columns:4.6em minmax(0,1fr);gap:4px 10px;font-size:14px;margin:0}
+.chain dt{color:var(--muted);font-size:12px;padding-top:2px}
+.chain dd{margin:0}
+.q{font-family:var(--f-text);font-size:14px;text-align:left;background:var(--sunk);border:0;border-left:2px solid var(--line-strong);padding:4px 10px;width:100%;line-height:1.7}
+.q:hover{border-left-color:var(--accent)}
+.q .pn{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-right:6px}
+.interp{font-size:14px}
+.interp::before{content:"解釈";font-size:11px;font-weight:700;color:var(--c-D);border:1px solid var(--c-D);border-radius:3px;padding:0 5px;margin-right:6px;vertical-align:1px}
+.lk{font-size:13px;padding:1px 8px;border:1px solid var(--c);color:var(--ink);background:none;border-radius:4px;text-align:left}
+.lk .i{font-family:var(--f-mono);font-size:11px;color:var(--c);margin-right:4px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.scene-h{font-size:13px;font-weight:700;color:var(--muted);padding-top:6px;display:flex;gap:8px;align-items:baseline}
+.scene-h::after{content:"";flex:1;border-top:1px dashed var(--line-strong)}
+.ans{font-size:15px;padding:10px 12px;background:var(--accent-soft);border:1px solid var(--accent)}
+.ans small{display:block;color:var(--muted);font-size:12px}
+.btn{font-size:13px;padding:4px 12px;border:1px solid var(--line-strong);background:var(--surface);border-radius:4px}
+ol.flow{margin:0;padding:0;list-style:none;counter-reset:f;display:flex;flex-direction:column;gap:8px}
+ol.flow li{counter-increment:f;display:grid;grid-template-columns:2.2em minmax(0,1fr);gap:10px}
+ol.flow li::before{content:counter(f);font-family:var(--f-mono);color:var(--accent);border:1.5px solid var(--accent);border-radius:50%;width:1.8em;height:1.8em;display:grid;place-items:center;font-size:13px;margin-top:2px}
+</style>
+
+<div class="col">
+  <header style="display:flex;flex-direction:column;gap:12px">
+    <span class="eyebrow">Reading Ontology ／ 入試の小説問題</span>
+    <h1>小説を「モノと関係」に分解して読む</h1>
+    <p class="answer">入試の小説問題は、ほぼ<b>「きっかけ → 心情 → 行動」のつながりを、本文の根拠つきで説明させる</b>問題。だから形式化するのもそこ。出来事・心情・表現の仕掛けを別々のモノとして取り出し、必ず本文の引用にひもづける。</p>
+  </header>
+
+  <section>
+    <span class="eyebrow">01 型</span>
+    <h2>取り出すモノは6種類</h2>
+  </section>
+</div>
+<figure class="wide" style="margin:12px auto 0">
+  <div class="fig"><svg viewBox="0 0 900 300" role="img" aria-label="読解オントロジーの型の図">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="g-h" d="M0 0L10 5L0 10z"/></marker></defs>
+    <rect class="g-ev" x="20" y="232" width="860" height="52" rx="4"/><text class="g-n" x="450" y="256" text-anchor="middle">本文の根拠</text><text class="g-s" x="450" y="273" text-anchor="middle">段落番号 ＋ 一字一句そのままの引用。上のモノはすべて、これを持たないと登録できない</text>
+    <rect class="g-box" style="stroke:var(--c-E)" x="60" y="92" width="170" height="60" rx="4"/><text class="g-n" x="145" y="118" text-anchor="middle">出来事</text><text class="g-s" x="145" y="137" text-anchor="middle">誰が何をした・起きた順</text>
+    <rect class="g-box" style="stroke:var(--c-M)" x="365" y="92" width="170" height="60" rx="4"/><text class="g-n" x="450" y="118" text-anchor="middle">心情</text><text class="g-s" x="450" y="137" text-anchor="middle">誰の・何への・明示か暗示か</text>
+    <rect class="g-box" style="stroke:var(--c-E)" x="670" y="92" width="170" height="60" rx="4"/><text class="g-n" x="755" y="118" text-anchor="middle">出来事</text><text class="g-s" x="755" y="137" text-anchor="middle">心情から生まれた行動</text>
+    <path class="g-l" d="M230 122 L361 122" marker-end="url(#ah)"/><text class="g-ll" x="296" y="113" text-anchor="middle">きっかけ</text>
+    <path class="g-l" d="M535 122 L666 122" marker-end="url(#ah)"/><text class="g-ll" x="601" y="113" text-anchor="middle">行動</text>
+    <rect class="g-box" style="stroke:var(--c-D)" x="365" y="16" width="170" height="44" rx="4"/><text class="g-n" x="450" y="44" text-anchor="middle">表現の仕掛け</text>
+    <path class="g-l" d="M450 60 L450 88" marker-end="url(#ah)"/><text class="g-ll" x="458" y="79">重なる</text>
+    <rect class="g-box" style="stroke:var(--c-P)" x="60" y="16" width="170" height="44" rx="4"/><text class="g-n" x="145" y="44" text-anchor="middle">人物</text>
+    <rect class="g-box" style="stroke:var(--c-R)" x="670" y="16" width="170" height="44" rx="4"/><text class="g-n" x="755" y="44" text-anchor="middle">関係（場面ごと）</text>
+    <path class="g-l" d="M230 38 L361 100" marker-end="url(#ah)"/><text class="g-ll" x="268" y="74">誰の</text>
+    <text class="g-s" x="450" y="188" text-anchor="middle">これらが置かれる入れ物が「場面」（場所・時・登場人物・本文の範囲）</text>
+    <path class="g-l" style="stroke-dasharray:3 4" d="M145 152 L145 228 M450 152 L450 174 M450 196 L450 228 M755 152 L755 228"/>
+  </svg></div>
+</figure>
+<div class="col">
+  <section style="padding-top:20px">
+    <p>真ん中の横1列が小説問題の骨格。「傍線部の心情を説明せよ」は<b>心情</b>とその<b>きっかけ</b>を、「なぜそうしたのか」は<b>行動</b>から<b>心情</b>へ逆向きに、「表現の効果を説明せよ」は<b>仕掛け</b>とそれが重なる<b>心情</b>を聞いている。</p>
+    <h3>登録のルール（これが形式化のいちばん大事な部分）</h3>
+    <ul class="rules">
+      <li><b>根拠なしは登録不可</b>心情も仕掛けも、本文の引用が一字一句合っていないと入れられない。「なんとなくそう思う」を締め出す。</li>
+      <li><b>きっかけは心情より前</b>心情には必ずきっかけの出来事をつける。きっかけが心情より後に語られていたら、設計ミスか回想。</li>
+      <li><b>明示と暗示を分ける</b>語り手が言葉で述べた心情か、行動や様子から読み取った心情か。暗示のほうが設問になりやすい。</li>
+      <li><b>解釈は解釈と書く</b>仕掛けの「効果」は本文に書いていない。事実（引用）と解釈を別の欄に分ける。</li>
+    </ul>
+    <p class="note">下の「羅生門」の見本では、引用56件すべてをプログラムで本文と照合してある。1件でも合わなければ、データが書き出されない仕組みにしてある。</p>
+  </section>
+  <section>
+    <span class="eyebrow">02 見本</span>
+    <h2>芥川龍之介「羅生門」で実際にやってみた</h2>
+    <p>右のカードを押すと、左の本文で根拠の箇所が光る。本文の段落についている小さな記号を押すと、その段落を根拠にしているカードが開く。</p>
+  </section>
+</div>
+
+<div class="wide" style="padding-top:16px">
+  <div class="bench">
+    <div class="text">
+      <div class="text-head"><b>羅生門</b><span>芥川龍之介 ／ 全36段落 ／ 青空文庫より</span></div>
+      <div class="now" id="now">カードを押すと、ここに何の根拠かが出る。</div>
+      <div class="paras" id="paras"></div>
+    </div>
+    <div class="side">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <p class="tabdesc" id="tabdesc"></p>
+      <div class="cards" id="cards"></div>
+    </div>
+  </div>
+</div>
+
+<div class="col">
+  <section>
+    <span class="eyebrow">03 分かること</span>
+    <h2>形式化して見えた「羅生門」の仕組み</h2>
+    <ol class="flow">
+      <li><div><b>心情が7段階で動き、最初と最後が対になっている。</b>M2「盗人になる勇気が出ない」で始まり、M7「盗人になる勇気」で終わる。途中の5つは、その距離を埋めるための段差。</div></li>
+      <li><div><b>真ん中で一度、逆方向に振れる。</b>M4 では悪を憎み「飢え死にを選ぶ」ところまで行く。いったん反対側に振ってから落とすので、最後の転落が際立つ。本文自身が「全然、反対な方向」と言っている。</div></li>
+      <li><div><b>下人の心情はすべて「明示」。</b>語り手が全部説明してくれる作品なので、設問は「どこに書いてあるかを見つけて、まとめる」型になる。逆に老婆の心情（M8）は暗示だけ。</div></li>
+      <li><div><b>きっかけは毎回、老婆の行動か言葉。</b>下人は自分からは変わらない。外の出来事に押されて変わる人物として作られている。</div></li>
+      <li><div><b>語られる順と起きた順がずれるのは1か所だけ。</b>E1（暇を出される）だけが回想。ここが下人の状況説明になっている。</div></li>
+    </ol>
+  </section>
+  <section>
+    <span class="eyebrow">04 自分でやる</span>
+    <h2>過去問の小説でやる手順</h2>
+    <ol class="flow">
+      <li><div><b>段落に番号を振り、場面で区切る。</b>場所・時・登場人物が変わるところが境目。</div></li>
+      <li><div><b>出来事を拾う。</b>「誰が何をした」を1行ずつ。回想には印をつける。</div></li>
+      <li><div><b>心情を拾い、引用を写す。</b>心情語（嬉しい、憎悪…）は明示。行動・表情・せりふ・情景から読むものは暗示。</div></li>
+      <li><div><b>心情ごとに、きっかけと行動を線でつなぐ。</b>つなげない心情があれば、読み落としがある。</div></li>
+      <li><div><b>くり返し出てくる物・比喩・情景を「仕掛け」として拾う。</b>どの心情と重なるかを書く。</div></li>
+      <li><div><b>設問の傍線部がどのモノに当たるかを決めて、線をたどって答える。</b></div></li>
+    </ol>
+    <div class="tscroll"><table>
+      <tr><th>設問の型</th><th>たどる向き</th><th>答えの骨組み</th></tr>
+      <tr><td>心情説明</td><td>心情 → きっかけ</td><td>〜（きっかけ）によって、〜という気持ち。</td></tr>
+      <tr><td>変化の理由</td><td>前の心情 → きっかけ → 後の心情</td><td>〜だったが、〜をきっかけに、〜になったから。</td></tr>
+      <tr><td>行動の理由</td><td>行動 → 心情 → きっかけ</td><td>〜を受けて〜と感じ、〜しようと思ったから。</td></tr>
+      <tr><td>表現の効果</td><td>仕掛け → 重なる心情</td><td>〜を描くことで、〜（心情・状況）を印象づける効果。</td></tr>
+    </table></div>
+    <p class="note">記入用の空の表（CSV）と、引用を本文と照合するプログラムは、リポジトリの <span style="font-family:var(--f-mono)">ontology/</span> に入れてある。</p>
+  </section>
+</div>
+
+<script>
+const D=/*DATA*/{};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ALL={};for(const k of ['people','scenes','events','feelings','relations','devices','questions'])for(const o of D[k])ALL[o.id]=o;
+const KIND={E:['出来事','--c-E'],M:['心情','--c-M'],D:['仕掛け','--c-D'],Q:['設問','--c-Q'],R:['関係','--c-R'],P:['人物','--c-P']};
+const cv=id=>`style="--c:var(${KIND[id[0]][1]})"`;
+const evs=o=>o.ev?(Array.isArray(o.ev)?o.ev:[o.ev]):o.target?[o.target]:[];
+const name=id=>{const o=ALL[id];return o.label||o.what||o.name||o.q};
+const who=id=>ALL[id].name;
+const TABS={
+ feel:['心情の流れ','下人の心情を、語られる順に並べたもの。上から下へ読むと「きっかけ → 心情 → 行動」の連鎖が見える。'],
+ dev:['表現の仕掛け','くり返される小道具、比喩、情景描写、語り方。引用は事実、「効果」は定番の解釈。'],
+ q:['設問を解く','入試でよく出る型の設問を、どのモノをどの順にたどれば答えられるかで示した。解答例は60字前後。'],
+ ev:['出来事と時間','物語の中で起きた順と、本文で語られる位置。ずれているところが回想。'],
+ rel:['人物と関係','人物と、場面ごとに変わる二人の関係。']};
+let tab='feel',sel=null,open={};
+function lk(id){return `<button class="lk" ${cv(id)} data-go="${id}"><span class="i">${id}</span>${esc(name(id))}</button>`}
+function quotes(o){return evs(o).map((e,i)=>`<button class="q" data-show="${o.id}" data-i="${i}"><span class="pn">¶${e.par}</span>${esc(e.quote)}</button>`).join('')}
+function card(o,body){return `<div class="card ${sel===o.id?'on':''}" id="c-${o.id}" ${cv(o.id)}>${body}</div>`}
+function vFeel(){let h='',sc=null;
+  for(const m of D.feelings){if(m.scene!==sc){sc=m.scene;const s=ALL[sc];h+=`<div class="scene-h">${s.name}（¶${s.from}〜${s.to}）</div>`}
+    h+=card(m,`<div class="card-h"><span class="id">${m.id}</span><b>${esc(m.label)}</b><span class="pill">${m.kind}</span><span class="pill">${who(m.who)}</span></div>
+    <dl class="chain"><dt>きっかけ</dt><dd>${lk(m.cause)}</dd><dt>何に対して</dt><dd>${esc(m.toward)}</dd><dt>行動</dt><dd>${m.action?lk(m.action):'<span style="color:var(--muted)">（すぐには行動に出ない）</span>'}</dd></dl>${quotes(m)}`)}
+  return h}
+function vDev(){return D.devices.map(d=>card(d,`<div class="card-h"><span class="id">${d.id}</span><b>${esc(d.name)}</b><span class="pill">${d.type}</span></div>${quotes(d)}<p class="interp">${esc(d.effect)}</p><div class="row"><span style="font-size:12px;color:var(--muted)">重なる心情</span>${d.links.map(lk).join('')}</div>`)).join('')}
+function vQ(){return D.questions.map(q=>card(q,`<div class="card-h"><span class="id">${q.id}</span><span class="pill">${q.type}</span></div><b style="font-size:15px">${esc(q.q)}</b>${quotes(q)}
+  <div class="row"><span style="font-size:12px;color:var(--muted)">たどる順</span>${q.path.map((p,i)=>(i?'<span style="color:var(--muted)">→</span>':'')+lk(p)).join('')}</div><p style="font-size:14px">${esc(q.how)}</p>
+  ${open[q.id]?`<div class="ans"><small>解答例（${[...q.answer].length}字）</small>${esc(q.answer)}</div>`:`<div><button class="btn" data-ans="${q.id}">解答例を見る</button></div>`}`)).join('')}
+function vEv(){return `<div class="tscroll"><table><tr><th>起きた順</th><th>語られる位置</th><th>誰が</th><th>出来事</th></tr>${D.events.map(e=>`<tr id="c-${e.id}"><td class="n">${e.story}</td><td class="n">¶${e.ev.par}${e.flash?' <span class="pill">回想</span>':''}</td><td>${who(e.who)}</td><td><button class="lk" ${cv(e.id)} data-show="${e.id}" data-i="0"><span class="i">${e.id}</span>${esc(e.what)}</button></td></tr>`).join('')}</table></div>`}
+function vRel(){return D.people.map(p=>card(p,`<div class="card-h"><span class="id">${p.id}</span><b>${esc(p.name)}</b></div><p style="font-size:14px">${esc(p.note)}</p><div class="row"><span style="font-size:12px;color:var(--muted)">呼ばれ方</span>${p.calls.map(c=>`<span class="pill">${esc(c)}</span>`).join('')}</div>`)).join('')
+  +`<div class="scene-h">下人と老婆の関係の移り変わり</div>`+D.relations.map(r=>card(r,`<div class="card-h"><span class="id">${r.id}</span><b>${esc(r.label)}</b><span class="pill">${ALL[r.scene].name}</span></div>${quotes(r)}`)).join('')}
+function paras(){
+  const act=sel?evs(ALL[sel]):[];const tags={};
+  for(const k of ['feelings','devices','events'])for(const o of D[k])for(const e of evs(o))(tags[e.par]=tags[e.par]||new Set()).add(o.id);
+  $('paras').innerHTML=D.text.map((t,i)=>{const n=i+1;let h=esc(t);
+    for(const e of act)if(e.par===n){const q=esc(e.quote);h=h.replace(q,`<mark>${q}</mark>`)}
+    const s=D.scenes.find(s=>s.from===n);
+    return `<div class="para ${s&&n>1?'scene-start':''}" id="p${n}">${s?`<span class="scene-lab">${s.name} ／ ${s.time}</span>`:''}<span class="no">${n}</span><span>${h}<span class="tags">${[...(tags[n]||[])].map(id=>`<button class="tg" ${cv(id)} data-go="${id}" title="${esc(name(id))}">${id}</button>`).join('')}</span></span></div>`}).join('');
+  $('now').innerHTML=sel?`<span class="id" ${cv(sel)}>${sel}</span> ${KIND[sel[0]][0]}：${esc(name(sel))}`:'カードを押すと、ここに何の根拠かが出る。';
+}
+function render(){
+  $('tabs').innerHTML=Object.entries(TABS).map(([k,[n]])=>`<button class="tab" role="tab" aria-selected="${tab===k}" data-tab="${k}">${n}</button>`).join('');
+  $('tabdesc').textContent=TABS[tab][1];
+  $('cards').innerHTML={feel:vFeel,dev:vDev,q:vQ,ev:vEv,rel:vRel}[tab]();
+  paras();
+}
+function show(id,i,scrollCard){sel=id;const t={M:'feel',D:'dev',Q:'q',E:'ev',R:'rel',P:'rel'}[id[0]];if(scrollCard)tab=t;render();
+  const e=evs(ALL[id])[i||0];if(e){const m=$('p'+e.par).querySelector('mark')||$('p'+e.par);const box=$('paras');box.scrollTo({top:m.offsetTop-box.offsetTop-60,behavior:'smooth'})}
+  if(scrollCard){const c=$('c-'+id);if(c)c.scrollIntoView({block:'center',behavior:'smooth'})}}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.tab){tab=d.tab;render()}else if(d.show){show(d.show,+d.i,false)}else if(d.go){show(d.go,0,true)}else if(d.ans){open[d.ans]=true;render()}});
+render();
+</script>
