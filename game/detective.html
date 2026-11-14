@@ -68,7 +68,17 @@ h3{font-size:12px;margin:0;color:var(--muted);font-family:var(--f-mono);font-wei
 .pipe .st b{font-weight:700}
 .pipe select,.pipe input{background:var(--surface);border:1px solid var(--line-strong);border-radius:3px;padding:2px 4px;min-width:0;max-width:100%}
 .pipe input{width:92px}
-.lab{font-size:12px;color:var(--muted);width:56px}
+.lab{font-size:12px;color:var(--muted);width:56px;flex:none}
+.pipe>div>.chips{flex:1;min-width:0}
+.chip.q{background:var(--surface);border-color:var(--line-strong)}
+.chip.q:hover,.btn.go:hover{background:var(--accent-soft)}
+.btn.go{border-color:var(--accent);color:var(--accent);font-weight:700}
+.btn.go small{font-weight:400;color:var(--muted)}
+.pipe details{padding:7px 10px;border-bottom:1px solid var(--line);font-size:13px}
+.pipe summary{cursor:pointer;color:var(--muted)}
+.pipe details>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:7px}
+.tin{background:var(--surface);border:1px solid var(--line-strong);border-radius:3px;padding:2px 4px;width:70px;font-family:var(--f-mono)}
+dd .chip{background:none;border-color:transparent;border-bottom:1px dashed var(--line-strong);border-radius:0;padding:0 2px;font-size:inherit}
 .over{background:var(--accent-soft);border:1px solid var(--accent);padding:8px 10px}
 .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px}
 .kv dt{color:var(--muted);font-size:12px;padding-top:2px}
@@ -236,7 +246,7 @@ function start(kind){
   let seed=baseSeed*10+kind,w;
   for(let i=0;i<400;i++){w=build(kind,seed+i*7919);if(w.ok)break}
   rnd=Math.random;
-  S={kind,...w,tab:'case',pipes:[{type:'人物',steps:[],d:{}}],sel:null,hist:[],marks:new Set(),miss:0,done:null,confirm:false};
+  S={kind,...w,tab:'case',pipes:[{type:'人物',steps:[],d:{}}],sel:null,hist:[],marks:new Set(),miss:0,done:null,confirm:false,times:[w.inc.p.時刻]};
   pawns=w.ppl.map(o=>{const p=PLACES[rnd()<.5?o.home:o.work];return{o,at:p,x:p.x0+20+rnd()*(p.x1-p.x0-40),y:p.y0+24+rnd()*(p.y1-p.y0-44),path:[],wait:rnd()*4,trip:5+rnd()*25,dir:'d',ph:rnd()*6,mv:false}});
   render();
 }
@@ -251,6 +261,8 @@ function run(pipe){
   let type=pipe.type,set=S.db.t[type].slice();const stages=[set.length];
   for(const s of pipe.steps){
     if(s.k==='f')set=set.filter(o=>test(o.p[s.prop],s.op,s.val));
+    else if(s.k==='id')set=set.filter(o=>o.id===s.id);
+    else if(s.k==='t')set=set.filter(o=>o.p.入<=s.val&&o.p.出>=s.val);
     else{const seen=new Set(),out=[];for(const o of set)for(const id of(o.l[s.label]||[]))if(!seen.has(id)){seen.add(id);out.push(S.db.o[id])}set=out;type=SCH[type].links[s.label]}
     stages.push(set.length)}
   return{type,set,stages};
@@ -258,6 +270,12 @@ function run(pipe){
 function ttl(o){const p=o.p,d=S.db.o,one=l=>o.l[l]&&d[o.l[l][0]];
   switch(o.type){case'人物':return p.氏名;case'場所':return p.名称;case'車両':return`${p.色}の${p.車種}（${p.ナンバー}）`;case'電話':return p.番号;
     case'通話':return`${p.時刻} の通話`;case'滞在記録':return`${one('場所').p.名称} ${p.入}–${p.出}`;case'取引':return`${p.時刻} ${p.品目}`;case'事件':return p.名称;default:return p.内容}}
+const FREE=['入','出','時刻','年齢','金額'];
+const normTime=v=>{const m=/^\s*(\d{1,2})[:：](\d{2})\s*$/.exec(v);return m&&+m[1]<24&&+m[2]<60?m[1].padStart(2,'0')+':'+m[2]:null};
+const stepLabel=s=>s.k==='f'?`絞り込み <b>${esc(s.prop)} ${s.op} ${esc(s.val)}</b>`:s.k==='id'?`<b>「${esc(s.name)}」</b>だけ`:s.k==='t'?`<b>${s.val}</b> にいた記録だけ`:`たどる <b>→ ${esc(s.label)}</b>`;
+function addPipe(type,steps){const q={type,steps,d:{}};const e=S.pipes.findIndex(p=>!p.steps.length);
+  if(e>=0)S.pipes[e]=q;else if(S.pipes.length<3)S.pipes.push(q);else S.pipes[2]=q;S.tab='explore'}
+const timeChips=id=>S.times.map(t=>`<button class="chip q" data-act="settime" data-for="${id}" data-t="${t}">${t}</button>`).join('');
 let HL=[],ALL=new Set();
 function refreshHL(){
   HL=S.pipes.map(p=>{const r=run(p);return r.type==='人物'&&p.steps.length?new Set(r.set.map(o=>o.id)):null});
@@ -272,7 +290,7 @@ function render(){
   $('cases').innerHTML=[1,2,3].map(k=>`<button class="btn ${S.kind===k?'on':''}" data-act="case" data-k="${k}">事件${k} ${'★'.repeat(k)}</button>`).join('')
     +`<button class="btn" data-act="reseed">別の町で</button><span class="miss">誤認逮捕 <b>${S.miss}</b>/2</span>`;
   $('legend').innerHTML=S.pipes.map((p,i)=>`<span><i class="dot" style="background:${PC[i]}"></i>探索${PN[i]}に該当</span>`).join('')
-    +'<span>◆ すべての探索に該当</span><span>？ 容疑者マーク</span><span>人物をクリックで詳細</span>';
+    +'<span>◆ すべての探索に該当</span><span>？ 容疑者マーク</span><span>人物・建物を押すと詳細</span>';
   let h='';
   if(S.done){const win=S.done==='win';
     h+=`<div class="res ${win?'win':'lose'}"><h2>${win?'逮捕成功':'捜査打ち切り'}：犯人は ${esc(S.cul.p.氏名)}</h2>
@@ -289,8 +307,8 @@ function vCase(){
   const inc=S.inc,d=S.db;
   return`<div class="blk"><span class="ty">事件</span><h2>${esc(inc.p.名称)}</h2>
     <dl class="kv"><dt>発生時刻</dt><dd>${inc.p.時刻}</dd><dt>現場</dt><dd>${chip(d.o[inc.l.現場[0]])}</dd></dl></div>
-  <div class="blk"><h3>証言</h3>${inc.l.証言.map(id=>`<div class="say">${esc(d.o[id].p.内容)}</div>`).join('')}</div>
-  <div class="blk"><h3>進め方</h3><ol class="how"><li>「探索」で、ある種類の記録から始める</li><li>条件で絞り込むか、リンクをたどって別の種類の記録へ移る</li><li>人物にたどり着くと、地図上の該当者に色の輪がつく</li><li>複数の探索が重なる人物を「詳細」から逮捕する</li></ol></div>
+  <div class="blk"><h3>証言</h3>${inc.l.証言.map(id=>`<div class="say">${esc(d.o[id].p.内容).replace(/0\d{1,2}-\d{4}-\d{4}/g,m=>{const ph=d.t.電話.find(x=>x.p.番号===m);return ph?chip(ph):m})}</div>`).join('')}</div>
+  <div class="blk"><h3>進め方</h3><ol class="how"><li>地図の建物を押すと「この時刻にここにいた人」を一発で探せる</li><li>「探索」では、並んだ値を押して絞り、「→」のボタンでつながった記録へ移る</li><li>詳細画面の値を押すと、同じ値の記録を探せる</li><li>該当者は地図で色の輪がつく。重なった1人を「詳細」から逮捕する</li></ol></div>
   <div class="blk"><h3>オントロジー（記録の種類。押すと探索を始める）</h3><div class="chips">${TYPES.map(t=>`<button class="chip" data-act="newpipe" data-t="${t}">${t} <small>${d.t[t].length}</small></button>`).join('')}</div></div>
   <div class="blk"><h3>容疑者マーク</h3><div class="chips">${[...S.marks].map(id=>chip(d.o[id])).join('')||'<span class="note">まだいない。人物の詳細からマークできる。</span>'}</div></div>`;
 }
@@ -304,36 +322,44 @@ function vExplore(){
     h+=`<div class="pipe"><div class="hd"><i class="dot" style="background:${PC[i]}"></i>探索${PN[i]}　開始：
       <select id="pt-${i}" data-ch="ptype" data-i="${i}" aria-label="開始する記録の種類">${TYPES.map(t=>`<option ${t===p.type?'selected':''}>${t}</option>`).join('')}</select>
       <span class="n">${r.stages[0]}件</span>${S.pipes.length>1?`<button class="btn x" data-act="delpipe" data-i="${i}" aria-label="探索を削除">×</button>`:''}</div>`;
-    p.steps.forEach((s,j)=>{h+=`<div class="st">${s.k==='f'?`絞り込み <b>${esc(s.prop)} ${s.op} ${esc(s.val)}</b>`:`たどる <b>→ ${esc(s.label)}</b>`}
+    p.steps.forEach((s,j)=>{h+=`<div class="st">${stepLabel(s)}
       <span class="n">${r.stages[j+1]}件</span><button class="btn x" data-act="delstep" data-i="${i}" data-j="${j}" aria-label="この手順を削除">×</button></div>`});
-    h+=`<div><span class="lab">絞り込み</span>
+    let q='';
+    for(const k of sc.props){if(FREE.includes(k))continue;const m=new Map();r.set.forEach(o=>m.set(o.p[k],(m.get(o.p[k])||0)+1));if(m.size<2||m.size>20||(m.size===r.set.length&&m.size>6))continue;
+      q+=`<div><span class="lab">${k}</span><div class="chips">${[...m].sort((x,y)=>y[1]-x[1]).map(([v,n])=>`<button class="chip q" data-act="qf" data-i="${i}" data-prop="${k}" data-val="${esc(v)}">${esc(v)} <small>${n}</small></button>`).join('')}</div></div>`}
+    if(r.type==='滞在記録')q+=`<div><span class="lab">時刻</span><input class="tin" id="tv-${i}" aria-label="時刻" value="${S.times[0]}"><button class="btn sm go" data-act="qt" data-i="${i}">にいた記録だけ</button>${timeChips('tv-'+i)}</div>`;
+    if(lk.length)q+=`<div><span class="lab">たどる</span>${lk.map(x=>`<button class="btn sm go" data-act="ql" data-i="${i}" data-l="${x}">→ ${x} <small>${sc.links[x]}</small></button>`).join('')}</div>`;
+    h+=q+`<details data-i="${i}" ${p.adv?'open':''}><summary>値を入力して絞る（番号・時刻・氏名など）</summary><div>
       <select id="fp-${i}" data-ch="fprop" data-i="${i}" aria-label="項目">${sc.props.map(x=>`<option ${x===d.prop?'selected':''}>${x}</option>`).join('')}</select>
       <select id="fo-${i}" aria-label="比べ方">${['=','≠','≤','≥','含む'].map(x=>`<option>${x}</option>`).join('')}</select>
       ${vals.length&&vals.length<=12&&!['入','出','時刻','年齢','金額'].includes(d.prop)?`<select id="fv-${i}" aria-label="値">${vals.map(v=>`<option>${esc(v)}</option>`).join('')}</select>`:`<input id="fv-${i}" aria-label="値" placeholder="${esc(vals[0]??'値')}">`}
-      <button class="btn sm" data-act="addf" data-i="${i}">追加</button></div>
-    <div><span class="lab">たどる</span><select id="fl-${i}" aria-label="リンク">${lk.map(x=>`<option value="${x}">${x}（→${sc.links[x]}）</option>`).join('')}</select>
-      <button class="btn sm" data-act="addl" data-i="${i}">追加</button></div>
+      <button class="btn sm" data-act="addf" data-i="${i}">追加</button></div></details>
     <div><span class="lab">結果</span><span class="ty">${r.type}</span><div class="chips" style="width:100%">${r.set.slice(0,10).map(o=>chip(o)).join('')}${r.set.length>10?`<span class="note">ほか${r.set.length-10}件</span>`:''}${r.set.length?'':'<span class="note">該当なし</span>'}</div></div></div>`;
   });
-  if(S.pipes.length<3)h+=`<div><button class="btn" data-act="newpipe" data-t="人物">探索を追加（最大3本）</button></div>`;
-  return h+`<div class="note">時刻は 14:05 の形で入力する。「入 ≤ 時刻」「出 ≥ 時刻」の2つで、その時刻にいた滞在記録だけが残る。</div>`;
+  if(S.pipes.length<3)h+=`<div><button class="btn" data-act="newpipe" data-add="1" data-t="人物">探索を追加（最大3本）</button></div>`;
+  return h+`<div class="note">値の右の数字は該当件数。手順の × を押すと、そこから後ろを取り消す。</div>`;
 }
 function vDetail(){
   const o=S.db.o[S.sel];
   if(!o)return'<div class="note">地図の人物か、一覧の項目を選ぶと、ここに項目とリンク先が出る。</div>';
   let h=`<div class="row">${S.hist.length?'<button class="btn sm" data-act="back">← 戻る</button>':''}<span class="ty">${o.type}</span></div>`;
   h+=`<div class="who">${o.type==='人物'?'<canvas id="portrait" width="120" height="144" style="width:60px;height:72px"></canvas>':''}<h2>${esc(ttl(o))}</h2></div>`;
-  h+=`<dl class="kv">${SCH[o.type].props.map(k=>`<dt>${k}</dt><dd>${esc(o.p[k])}${k==='金額'?'円':''}</dd>`).join('')}</dl>`;
+  const tap=!['事件','証言'].includes(o.type);
+  h+=`<dl class="kv">${SCH[o.type].props.map(k=>`<dt>${k}</dt><dd>${tap?`<button class="chip" data-act="same" data-prop="${k}" title="同じ値の記録を探す">${esc(o.p[k])}${k==='金額'?'円':''}</button>`:esc(o.p[k])}</dd>`).join('')}</dl>`;
+  if(o.type==='場所')h+=`<div class="row"><input class="tin" id="dt-time" aria-label="時刻" value="${S.times[0]}"><button class="btn pri" data-act="whohere">にここにいた人を探す</button>${timeChips('dt-time')}</div>`;
+  if(o.type==='取引')h+=`<div class="row"><button class="btn pri" data-act="whoshop">${o.p.時刻} にこの店にいた人を探す</button></div>`;
+  if(tap)h+='<div class="note">点線の値を押すと、同じ値の記録を探索に出せる。</div>';
   if(o.type==='人物'){
     h+=`<div class="row"><button class="btn" data-act="mark">${S.marks.has(o.id)?'容疑者マークを外す':'容疑者としてマーク'}</button>`;
     if(!S.done)h+=S.confirm?`<b>${esc(o.p.氏名)} を逮捕する？</b><button class="btn danger" data-act="arrest">逮捕する</button><button class="btn" data-act="cancel">やめる</button>`:`<button class="btn danger" data-act="confirm">逮捕する</button>`;
     h+='</div>';
   }
   for(const l of Object.keys(SCH[o.type].links)){const ids=o.l[l]||[];
-    h+=`<div class="blk"><h3>${l}（${SCH[o.type].links[l]}）${ids.length}件</h3><div class="chips">${ids.slice(0,24).map(id=>chip(S.db.o[id])).join('')||'<span class="note">なし</span>'}${ids.length>24?`<span class="note">ほか${ids.length-24}件</span>`:''}</div></div>`}
+    h+=`<div class="blk"><div class="row"><h3>${l}（${SCH[o.type].links[l]}）${ids.length}件</h3>${ids.length>1?`<button class="btn sm" data-act="follow" data-l="${l}">まとめて探索へ</button>`:''}</div><div class="chips">${ids.slice(0,24).map(id=>chip(S.db.o[id])).join('')||'<span class="note">なし</span>'}${ids.length>24?`<span class="note">ほか${ids.length-24}件</span>`:''}</div></div>`}
   return h;
 }
-function open(id,keep){if(S.sel&&S.sel!==id&&keep)S.hist.push(S.sel);else if(!keep)S.hist=[];S.sel=id;S.tab='detail';S.confirm=false;render()}
+function open(id,keep){const t=S.db.o[id].p.時刻;if(t&&id!==S.inc.id){S.times=S.times.filter(x=>x!==t);S.times.push(t);if(S.times.length>4)S.times.splice(1,1)}
+  if(S.sel&&S.sel!==id&&keep)S.hist.push(S.sel);else if(!keep)S.hist=[];S.sel=id;S.tab='detail';S.confirm=false;render()}
 
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,i=+b.dataset.i,p=S.pipes[i];
@@ -342,10 +368,18 @@ document.addEventListener('click',e=>{
   if(a==='tab')S.tab=b.dataset.k;
   else if(a==='open')return open(b.dataset.id,S.tab==='detail');
   else if(a==='back'){S.sel=S.hist.pop();S.confirm=false}
-  else if(a==='newpipe'){if(S.pipes.length<3)S.pipes.push({type:b.dataset.t,steps:[],d:{}});else{const q=S.pipes[S.pipes.length-1];q.type=b.dataset.t;q.steps=[]}S.tab='explore'}
+  else if(a==='newpipe'){if(b.dataset.add&&S.pipes.length<3){S.pipes.push({type:'人物',steps:[],d:{}});S.tab='explore'}else addPipe(b.dataset.t,[])}
   else if(a==='delpipe')S.pipes.splice(i,1);
   else if(a==='delstep')p.steps.splice(+b.dataset.j);
-  else if(a==='addf'){const v=$('fv-'+i).value.trim();if(v==='')return $('fv-'+i).focus();p.steps.push({k:'f',prop:$('fp-'+i).value,op:$('fo-'+i).value,val:v})}
+  else if(a==='addf'){const v=$('fv-'+i).value.trim();const k=$('fp-'+i).value,tv=['入','出','時刻'].includes(k)?normTime(v):v;if(v===''||!tv)return $('fv-'+i).focus();p.steps.push({k:'f',prop:k,op:$('fo-'+i).value,val:tv})}
+  else if(a==='qf')p.steps.push({k:'f',prop:b.dataset.prop,op:'=',val:b.dataset.val});
+  else if(a==='ql')p.steps.push({k:'l',label:b.dataset.l});
+  else if(a==='settime'){$(b.dataset.for).value=b.dataset.t;return}
+  else if(a==='qt'){const v=normTime($('tv-'+i).value);if(!v)return $('tv-'+i).focus();p.steps.push({k:'t',val:v})}
+  else if(a==='same'){const o=S.db.o[S.sel],k=b.dataset.prop;addPipe(o.type,[{k:'f',prop:k,op:'=',val:String(o.p[k])}])}
+  else if(a==='follow'){const o=S.db.o[S.sel];addPipe(o.type,[{k:'id',id:o.id,name:ttl(o)},{k:'l',label:b.dataset.l}])}
+  else if(a==='whohere'||a==='whoshop'){const o=S.db.o[S.sel],pl=a==='whohere'?o:S.db.o[o.l.店舗[0]],v=a==='whohere'?normTime($('dt-time').value):o.p.時刻;if(!v)return $('dt-time').focus();
+    addPipe('場所',[{k:'id',id:pl.id,name:ttl(pl)},{k:'l',label:'滞在記録'},{k:'t',val:v},{k:'l',label:'人物'}])}
   else if(a==='addl'){const v=$('fl-'+i).value;if(v)p.steps.push({k:'l',label:v})}
   else if(a==='mark'){S.marks.has(S.sel)?S.marks.delete(S.sel):S.marks.add(S.sel)}
   else if(a==='confirm')S.confirm=true;
@@ -358,6 +392,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.ch==='ptype'){S.pipes[i].type=t.value;S.pipes[i].steps=[];render()}
   else if(t.dataset.ch==='fprop'){S.pipes[i].d.prop=t.value;render()}
 });
+document.addEventListener('toggle',e=>{const d=e.target;if(d.tagName==='DETAILS'&&d.dataset.i&&S.pipes[+d.dataset.i])S.pipes[+d.dataset.i].adv=d.open},true);
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id&&e.target.id.startsWith('fv-')){const b=document.querySelector(`[data-act="addf"][data-i="${e.target.id.slice(3)}"]`);b&&b.click()}});
 
 /* ---------- 地図と群衆 ---------- */
@@ -440,7 +475,9 @@ function pawnAt(e){const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.wid
   for(const p of pawns){const d=Math.hypot(p.x-x,p.y-5-y);if(d<bd){bd=d;best=p}}return best}
 cv.addEventListener('mousemove',e=>{hover=pawnAt(e)});
 cv.addEventListener('mouseleave',()=>{hover=null});
-cv.addEventListener('click',e=>{const p=pawnAt(e);if(p)open(p.o.id,false)});
+cv.addEventListener('click',e=>{const p=pawnAt(e);if(p)return open(p.o.id,false);
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H,i=PLACES.findIndex(q=>x>=q.x0&&x<=q.x1&&y>=q.y0&&y<=q.y1);
+  if(i>=0)open(S.db.t.場所[i].id,false)});
 
 start(1);requestAnimationFrame(loop);
 </script>
