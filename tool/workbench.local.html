@@ -133,8 +133,8 @@ const cv=id=>`style="--c:var(${KIND[id[0]].c})"`;
 const store={mode:'wait',col:null,
   async init(){
     try{ if(window.claude?.use){ const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]); const id=user?await user.id():null;
-      if(db&&id){ this.col=db.collection('data/users/'+id); const snap=await this.col.get(); this.mode='cloud'; return snap.docs.map(d=>d.data()).filter(w=>w&&w.id&&Array.isArray(w.text)); } } }catch(e){}
-    this.mode='local'; try{return JSON.parse(localStorage.getItem('reading-works')||'[]')}catch(e){return []}
+      if(db&&id){ this.col=db.collection('data/users/'+id); const snap=await this.col.get(); this.mode='cloud'; return snap.docs.map(d=>{ try{ return JSON.parse(JSON.stringify(d.data())); }catch(e){ return null; } }).filter(w=>w&&w.id&&Array.isArray(w.text)).map(fixWork); } } }catch(e){}
+    this.mode='local'; try{return JSON.parse(localStorage.getItem('reading-works')||'[]').filter(w=>w&&Array.isArray(w.text)).map(fixWork)}catch(e){return []}
   },
   async save(w){ if(this.mode==='cloud') await this.col.doc(w.id).set(w); else this.saveLocal(); },
   async remove(id){ if(this.mode==='cloud') await this.col.doc(id).delete(); else this.saveLocal(); },
@@ -147,6 +147,11 @@ async function flush(){ if(saving||!dirtyW) return; saving=true; const w=JSON.pa
   saving=false; paintSave(); if(dirtyW) flush(); }
 function paintSave(){ const el=$('save'); if(el) el.textContent=saveState; }
 
+/* 読み込んだ作品の欠けた項目を補う */
+function fixWork(w){ for(const k of ['people','scenes','events','feelings','devices','questions']) if(!Array.isArray(w[k])) w[k]=[];
+  w.seq={E:0,M:0,D:0,Q:0,P:0,...(w.seq||{})};
+  for(const t of ['E','M','D','Q','P']){ const mx=Math.max(0,...w[KIND[t].k].map(o=>+String(o.id).slice(1)||0)); if(w.seq[t]<mx) w.seq[t]=mx; }
+  return w; }
 /* ---------- 状態 ---------- */
 const ui={view:'home',tab:'M',sel:null,edit:null,pending:null,msg:null,confirm:null,newForm:false,open:{}};
 const all=()=>['events','feelings','devices','questions','people'].flatMap(k=>W[k]);
