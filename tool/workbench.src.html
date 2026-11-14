@@ -143,7 +143,7 @@ const store={mode:'wait',col:null,
 let works=[],W=null,saveState='',timer=null,saving=false,dirtyW=null;
 function touch(w){ w=w||W; if(dirtyW&&dirtyW!==w) flush(); w.updated=Date.now(); dirtyW=w; saveState='保存中…'; clearTimeout(timer); timer=setTimeout(flush,700); paintSave(); }
 async function flush(){ if(saving||!dirtyW) return; saving=true; const w=JSON.parse(JSON.stringify(dirtyW)); dirtyW=null;
-  try{ await store.save(w); saveState=store.mode==='cloud'?'保存済み':'この端末に保存済み'; }catch(e){ saveState='保存に失敗：'+(e.message||e.code||''); }
+  try{ await store.save(w); saveState=store.mode==='cloud'?'保存済み':'この端末に保存済み'; }catch(e){ saveState='保存に失敗：'+(e.message||e.code||''); ui.msg={t:'保存に失敗した（'+(e.code||e.message||'')+'）。この文をそのまま教えてくれれば直せる。',at:'side'}; if(ui.view==='work') paintSide(); }
   saving=false; paintSave(); if(dirtyW) flush(); }
 function paintSave(){ const el=$('save'); if(el) el.textContent=saveState; }
 
@@ -354,14 +354,19 @@ document.addEventListener('drop',e=>{ const z=e.target.closest?.('#ocr'); if(!z|
 
 /* ---------- 操作 ---------- */
 function blank(t){ return {E:{who:'',what:'',flash:false},M:{who:W.people[0]?.id||'',label:'',toward:'',kind:'明示',cause:'',action:''},D:{type:DTYPES[0],name:'',effect:'',links:[]},Q:{type:QTYPES[0],q:'',limit:'',path:[],answer:''},P:{name:'',calls:'',note:''}}[t]; }
+function syncForm(){ if(!ui.edit) return; const d=ui.edit.d;
+  document.querySelectorAll('#form [data-f]').forEach(el=>{ const k=el.dataset.f; if(el.type==='checkbox') d[k]=el.checked; else if(el.type==='radio'){ if(el.checked) d[k]=el.value; } else d[k]=el.value; });
+  if('links' in d) d.links=[...document.querySelectorAll('#form [data-link]')].filter(el=>el.checked).map(el=>el.dataset.link); }
 function saveForm(){
-  const e=ui.edit,d=e.d,t=e.kind,fail=m=>{ui.msg={t:m,at:'form'};paintSide();};
+  syncForm();
+  const e=ui.edit,d=e.d,t=e.kind,fail=m=>{ui.msg={t:m,at:'form'};paintSide();$('form')?.scrollIntoView({block:'nearest'});};
   if(t!=='P'&&!d.ev.length) return fail('登録できない：本文の根拠が1つもない。本文をなぞって選び、「根拠に追加」を押す。');
   const need={E:['what','何が起きたか'],M:['label','どんな心情か'],D:['name','名前'],Q:['q','設問文'],P:['name','名前']}[t];
   if(!String(d[need[0]]).trim()) return fail(`登録できない：「${need[1]}」が空。`);
   if(t==='M'&&!d.who) return fail(W.people.length?'登録できない：「誰の」心情かを選ぶ。':'登録できない：先に「人物」タブで人物を登録して、「誰の」心情かを選ぶ。');
+  const label=String(d[need[0]]).trim().slice(0,20);
   if(e.id) Object.assign(get(e.id),d); else { const id=t+(++W.seq[t]); W[KIND[t].k].push({id,...d}); ui.sel=id; }
-  ui.edit=null; ui.msg=null; ui.pending=null; getSelection()?.removeAllRanges(); touch(); render();
+  ui.edit=null; ui.msg={t:`${KIND[t].n}「${label}」を${e.id?'更新':'登録'}した。`,ok:true,at:'side'}; ui.pending=null; getSelection()?.removeAllRanges(); touch(); render();
 }
 function remove(id){ const k=KIND[id[0]].k; W[k]=W[k].filter(o=>o.id!==id);
   for(const m of W.feelings){ if(m.cause===id)m.cause=''; if(m.action===id)m.action=''; if(m.who===id)m.who=''; }
@@ -372,7 +377,11 @@ function remove(id){ const k=KIND[id[0]].k; W[k]=W[k].filter(o=>o.id!==id);
 async function exportWork(){ const data=JSON.stringify(W,null,1),name=(W.title||'reading').replace(/[\\/:*?"<>|]/g,'_')+'.json';
   try{ const dl=window.claude?.use?await claude.use('downloads'):null; if(dl){ await dl.save({filename:name,data}); ui.msg={t:'ファイルに書き出した。',ok:true,at:'side'}; } else { await navigator.clipboard.writeText(data); ui.msg={t:'この画面ではファイルに保存できないので、データをクリップボードにコピーした。メモ帳などに貼り付けて保存する。',ok:true,at:'side'}; } }
   catch(e){ ui.msg={t:e&&e.code==='declined'?'書き出しを取りやめた。':'書き出せなかった。',at:'side'}; } paintSide(); }
-document.addEventListener('click',e=>{
+function showErr(x,where){ const m=`不具合が起きた（${where}）：${(x&&(x.message||x.code))||x}`; ui.msg={t:m+'。この文をそのまま教えてくれれば直せる。',at:ui.edit?'form':'side'}; try{ ui.view==='work'?paintSide():render(); }catch(_){ alert&&0; } }
+window.addEventListener('error',e=>showErr(e.error||e.message,'画面'));
+window.addEventListener('unhandledrejection',e=>showErr(e.reason,'保存など'));
+document.addEventListener('click',e=>{ try{ onClick(e); }catch(x){ showErr(x,'ボタン「'+(e.target.closest('[data-a]')?.dataset.a||'')+'」'); } });
+function onClick(e){
   const b=e.target.closest('[data-a]'); if(!b) return; const {a,id,t,i,n}=b.dataset;
   if(a==='toggleNew'){ ui.newForm=!ui.newForm; ui.msg=null; render(); }
   else if(a==='create'){ const title=$('nw-title').value.trim(),text=$('nw-text').value; const w=newWork(title||'無題',$('nw-author').value.trim(),text);
@@ -407,7 +416,7 @@ document.addEventListener('click',e=>{
   else if(a==='ocrRun'){ runOcr(); }
   else if(a==='ocrStop'){ ocr.ctl?.abort(); }
   else if(a==='ocrDel'){ URL.revokeObjectURL(ocr.imgs[+i].url); ocr.imgs.splice(+i,1); paintOcr(); }
-});
+}
 function onField(e){ const el=e.target;
   if(el.dataset.scene){ const s=W.scenes.find(s=>s.from===+el.dataset.scene); if(s&&s.name!==el.value){ s.name=el.value; touch(); } return; }
   if(!ui.edit) return; const d=ui.edit.d;
@@ -415,7 +424,7 @@ function onField(e){ const el=e.target;
     if(k==='answer'||k==='limit'){ const c=$('anscnt'),L=[...(d.answer||'')].length; if(c){ c.textContent=L+'字'+(d.limit?` ／ ${d.limit}字以内`:''); c.classList.toggle('over',!!d.limit&&L>+d.limit); } } }
   else if(el.dataset.link){ const id=el.dataset.link; d.links=d.links.filter(x=>x!==id); if(el.checked) d.links.push(id); }
 }
-document.addEventListener('input',onField); document.addEventListener('change',e=>{ onField(e);
+document.addEventListener('input',onField); document.addEventListener('compositionend',onField); document.addEventListener('change',e=>{ onField(e);
   if(e.target.id==='ocr-file'){ addImages([...e.target.files]); return; }
   if(e.target.id==='imp'&&e.target.files[0]){ const r=new FileReader(); r.onload=()=>{ try{ const w=JSON.parse(r.result); if(!Array.isArray(w.text)||!w.text.length) throw 0;
       const n=newWork(w.title||'読み込んだ作品',w.author||'',''); for(const k of ['text','people','scenes','events','feelings','devices','questions']) if(Array.isArray(w[k])) n[k]=w[k]; if(w.seq) n.seq={...n.seq,...w.seq};
